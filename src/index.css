@@ -24,7 +24,7 @@
   }
 
   .sidebar {
-    @apply w-64 bg-sidebar border-r border-line p-6 flex flex-col gap-8 sticky top-0 h-screen hidden lg:flex;
+    @apply w-64 bg-sidebar border-r border-line p-6 flex flex-col gap-8 fixed lg:sticky top-0 h-[100dvh] z-50 transition-transform duration-300 ease-in-out;
   }
 
   .main-content {
