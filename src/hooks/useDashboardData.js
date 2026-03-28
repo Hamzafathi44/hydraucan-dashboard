@@ -6,7 +6,7 @@ import {
 import { toast } from 'sonner';
 import { FileText, TrendingUp, Clock } from 'lucide-react';
 
-export const useDashboardData = () => {
+export const useDashboardData = (user) => {
   const [dataList, setDataList] = useState([]);
   const [formData, setFormData] = useState({ 
     date: '', reference: '', type: '', material: '', nature: '' 
@@ -19,7 +19,6 @@ export const useDashboardData = () => {
   const [natureOptions, setNatureOptions] = useState(['faience', 'revsol', 'beton', 'C.D', 'T.N', 'lamozik']);
   
   const ITEMS_PER_PAGE = 20;
-  const user = auth.currentUser;
 
   // 1. Data Migration Script (runs once on load if needed)
   useEffect(() => {

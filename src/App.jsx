@@ -16,10 +16,46 @@ import { MonthlyReportView } from './pages/MonthlyReportView';
 import { DatabaseView } from './pages/DatabaseView';
 import { SettingsView } from './pages/SettingsView';
 
+const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
+  const dashboardData = useDashboardData(user); // explicitly pass user
+
+  return (
+    <DashboardLayout activeView={activeView} setActiveView={setActiveView}>
+      <AnimatePresence mode="wait">
+        {activeView === 'home' && (
+          <DashboardHome 
+            stats={dashboardData.stats} 
+            dataList={dashboardData.dataList} 
+            chartData={dashboardData.chartData} 
+          />
+        )}
+        {activeView === 'rapport' && (
+          <MonthlyReportView 
+            {...dashboardData} 
+          />
+        )}
+        {activeView === 'database' && (
+          <DatabaseView 
+            {...dashboardData}
+          />
+        )}
+        {activeView === 'settings' && (
+          <SettingsView 
+            typeOptions={dashboardData.typeOptions}
+            natureOptions={dashboardData.natureOptions}
+            handleAddOption={dashboardData.handleAddOption}
+            handleRemoveOption={dashboardData.handleRemoveOption}
+          />
+        )}
+      </AnimatePresence>
+    </DashboardLayout>
+  );
+};
+
 function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [activeView, setActiveView] = useState('home'); // 'home', 'rapport', 'database', 'settings'
+  const [activeView, setActiveView] = useState('home');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -28,9 +64,6 @@ function App() {
     });
     return () => unsubscribe();
   }, []);
-
-  // Initialize all data logic only if the user is logged in
-  const dashboardData = useDashboardData();
 
   if (authLoading) {
     return (
@@ -56,39 +89,10 @@ function App() {
     );
   }
 
-  // Render App Content Once Authenticated
   return (
     <>
       <Toaster position="top-right" richColors />
-      <DashboardLayout activeView={activeView} setActiveView={setActiveView}>
-        <AnimatePresence mode="wait">
-          {activeView === 'home' && (
-            <DashboardHome 
-              stats={dashboardData.stats} 
-              dataList={dashboardData.dataList} 
-              chartData={dashboardData.chartData} 
-            />
-          )}
-          {activeView === 'rapport' && (
-            <MonthlyReportView 
-              {...dashboardData} 
-            />
-          )}
-          {activeView === 'database' && (
-            <DatabaseView 
-              {...dashboardData}
-            />
-          )}
-          {activeView === 'settings' && (
-            <SettingsView 
-              typeOptions={dashboardData.typeOptions}
-              natureOptions={dashboardData.natureOptions}
-              handleAddOption={dashboardData.handleAddOption}
-              handleRemoveOption={dashboardData.handleRemoveOption}
-            />
-          )}
-        </AnimatePresence>
-      </DashboardLayout>
+      <AuthenticatedApp user={user} activeView={activeView} setActiveView={setActiveView} />
     </>
   );
 }
