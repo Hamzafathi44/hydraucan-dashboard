@@ -3,7 +3,19 @@ import express from 'express';
 import cors from 'cors';
 
 const app = express();
-app.use(cors());
+
+// Secure backend to only accept local dev and specific production domains
+const allowedOrigins = ['http://localhost:5173'];
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 app.use(express.json());
 
 // بيانات تجريبية سنرسلها للواجهة

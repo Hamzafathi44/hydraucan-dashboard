@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Work Reports collection
+    match /workReports/{reportId} {
+      // Allow read/write only if the user is authenticated 
+      // AND the document's userId matches their UID
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      
+      // For creating new documents, the incoming data's userId must be their UID
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // App Settings collection (Nature/Type options)
+    match /appSettings/options {
+      // Settings are currently shared via the top-level appSettings document
+      // We will allow any authenticated user to read/write them for now
+      allow read, write: if request.auth != null;
+    }
+
+  }
+}
