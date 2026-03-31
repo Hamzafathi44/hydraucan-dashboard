@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { 
-  Menu, X, LayoutDashboard, FileText, TrendingUp, Settings, LogOut 
+  Menu, X, LayoutDashboard, FileText, TrendingUp, Settings, LogOut, Droplets 
 } from 'lucide-react';
 
 export const DashboardLayout = ({ children, activeView, setActiveView }) => {
@@ -56,6 +56,13 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
           >
             <TrendingUp className="w-5 h-5" />
             Base de données
+          </button>
+          <button 
+            onClick={() => { setActiveView('fichier'); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'fichier' ? 'bg-accent/10 text-ink' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+          >
+            <Droplets className="w-5 h-5" />
+            Fichier EXPLOITATION EAU
           </button>
           <button 
             onClick={() => { setActiveView('settings'); setIsMobileMenuOpen(false); }}

@@ -22,25 +22,25 @@ const toBase64 = (url) => {
 export const generateReportPDF = async (filteredList, selectedMonth) => {
   const doc = new jsPDF();
   const loadingToast = toast.loading("Génération du PDF...");
-  
+
   try {
     const logoData = await toBase64('/logo-hydracane.png');
-    doc.addImage(logoData, 'PNG', 15, 10, 45, 15); 
+    doc.addImage(logoData, 'PNG', 15, 10, 45, 15);
   } catch {
     console.warn("Logo non trouvé");
   }
 
   const title = selectedMonth === 'Tous' ? "Rapport Mensuel - Global" : `Rapport Mensuel - ${selectedMonth}`;
-  
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.text(title, 105, 25, { align: 'center' });
 
   const bodyData = filteredList.map(item => [
-    item.date, 
-    item.reference, 
-    item.type, 
-    item.material, 
+    item.date,
+    item.reference,
+    item.type,
+    item.material,
     item.nature
   ]);
 
@@ -49,7 +49,7 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     body: bodyData,
     startY: 40,
     theme: 'grid',
-    didParseCell: function(data) {
+    didParseCell: function (data) {
       if (data.column.index === 0 && data.cell.section === 'body') {
         const rowIndex = data.row.index;
         const currentDate = data.cell.raw;
@@ -63,7 +63,7 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     },
     styles: { valign: 'middle', halign: 'center', fontSize: 10 }
   });
-  
+
   doc.save(`${title}.pdf`);
   toast.dismiss(loadingToast);
   toast.success("PDF exporté avec succès");

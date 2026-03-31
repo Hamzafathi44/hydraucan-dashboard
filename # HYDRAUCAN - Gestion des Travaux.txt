@@ -1,0 +1,30 @@
+# HYDRAUCAN - Gestion des Travaux
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      // Aggressive fix for "Cannot set property fetch of #<Window> which has only a getter"
+      try {
+        const originalFetch = window.fetch;
+        Object.defineProperty(window, 'fetch', {
+          value: originalFetch,
+          writable: true,
+          configurable: true,
+          enumerable: true
+        });
+      } catch (e) {
+        console.warn('Could not redefine fetch, it might already be non-configurable.');
+      }
+    </script>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HYDRAUCAN - Gestion des Travaux</title>
+    <script type="module" crossorigin src="/assets/index-CMj2x5h-.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DytcCtbB.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

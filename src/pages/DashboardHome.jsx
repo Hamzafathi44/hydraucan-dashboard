@@ -33,8 +33,15 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{stat.label}</span>
               <stat.icon className={`w-5 h-5 ${stat.color}`} />
             </div>
-            <div className="flex items-baseline gap-2">
+            <div className="flex flex-col gap-1">
               <span className="text-2xl font-black text-slate-900">{stat.value}</span>
+              {stat.breakdown && (
+                <div className="flex items-center gap-3 mt-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                  <span>RNVL: <span className="text-slate-700">{stat.breakdown.RNVL || 0}</span></span>
+                  <span>FUITE: <span className="text-slate-700">{stat.breakdown.FUITE || 0}</span></span>
+                  <span>F. SP: <span className="text-slate-700">{stat.breakdown['F. SP'] || 0}</span></span>
+                </div>
+              )}
             </div>
           </Motion.div>
         ))}

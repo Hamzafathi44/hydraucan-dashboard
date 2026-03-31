@@ -1,19 +1,46 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import { 
-  collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, getDoc, where, writeBatch, getDocs 
+  collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, getDoc, where, writeBatch, getDocs, updateDoc 
 } from "firebase/firestore";
 import { toast } from 'sonner';
 import { FileText, TrendingUp, Clock } from 'lucide-react';
 
+export const formatMaterialsData = (data) => {
+  if (!data || (!data.main && (!data.items || data.items.length === 0))) return '';
+  const parts = [];
+  if (data.main) parts.push(data.main);
+  
+  if (data.items && data.items.length > 0) {
+    const itemsStr = data.items.filter(i => i.article).map(i => {
+      const dn = i.dn === 'Autre' ? i.customDn : i.dn;
+      const dnStr = dn ? ` DN ${dn}` : '';
+      const unit = ['Tuyau'].includes(i.article) ? 'ml' : 'u';
+      const qtyStr = i.qty ? ` (${i.qty}${unit})` : '';
+      return `${i.article}${dnStr}${qtyStr}`;
+    }).join(' + ');
+    if (itemsStr) parts.push(`[${itemsStr}]`);
+  }
+  return parts.join(' ');
+};
+
 export const useDashboardData = (user) => {
   const [dataList, setDataList] = useState([]);
   const [formData, setFormData] = useState({ 
-    date: '', reference: '', type: '', material: '', nature: '' 
+    date: '', reference: '', type: '', material: '', nature: '',
+    materialsData: { main: '', items: [] },
+    adresse: '', x: '', y: '', mapType: 'Normal', estimation: '', mat2: '',
+    fuite_can: false, fuite_bra: false,
+    mat_ac: false, mat_fg: false, mat_fd: false, mat_pe: false, mat_pvc: false,
+    type_casse: false, type_fissure: false, type_joint: false, type_presse: false, type_autre: false,
+    debit_fai: false, debit_moy: false, debit_for: false,
+    vis_oui: false, vis_non: false, vis_aff: false, vis_autre: false,
+    org_ter: false, org_mau: false, org_cor: false, org_autre: false
   });
   const [selectedMonth, setSelectedMonth] = useState('Tous');
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [typeOptions, setTypeOptions] = useState(['RNVL', 'Fuite', 'FUITE SPECIALE']);
   const [natureOptions, setNatureOptions] = useState(['faience', 'revsol', 'beton', 'C.D', 'T.N', 'lamozik']);
@@ -228,7 +255,30 @@ export const useDashboardData = (user) => {
   const months = ['Tous', ...new Set(dataList.map(item => new Date(item.date).toLocaleString('fr-FR', { month: 'long', year: 'numeric' })))];
 
   // 6. Action Handlers
-  const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    const newValue = type === 'checkbox' ? checked : value;
+    
+    setFormData(prev => {
+      const next = { ...prev, [name]: newValue };
+      
+      if (name === 'type') {
+        const t = value.toUpperCase();
+        if (t === 'FUITE') {
+          next.fuite_bra = true;
+          next.fuite_can = false;
+        } else if (t === 'FUITE SPECIALE') {
+          next.fuite_can = true;
+          next.fuite_bra = false;
+        } else {
+          next.fuite_bra = false;
+          next.fuite_can = false;
+        }
+      }
+      return next;
+    });
+  };
+
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -243,19 +293,77 @@ export const useDashboardData = (user) => {
 
     setIsSubmitting(true);
     try {
-      // MULTI-TENANT: Automatically append userId to all new documents
-      await addDoc(collection(db, "workReports"), {
-        ...formData,
-        userId: user.uid
+      if (editingId) {
+        await updateDoc(doc(db, "workReports", editingId), {
+          ...formData
+        });
+        toast.success("Rapport mis à jour avec succès");
+        setEditingId(null);
+      } else {
+        await addDoc(collection(db, "workReports"), {
+          ...formData,
+          userId: user.uid
+        });
+        toast.success("Rapport ajouté avec succès");
+      }
+      setFormData({ 
+        date: '', reference: '', type: '', material: '', nature: '',
+        materialsData: { main: '', items: [] },
+        adresse: '', x: '', y: '', mapType: 'Normal', estimation: '', mat2: '',
+        fuite_can: false, fuite_bra: false,
+        mat_ac: false, mat_fg: false, mat_fd: false, mat_pe: false, mat_pvc: false,
+        type_casse: false, type_fissure: false, type_joint: false, type_presse: false, type_autre: false,
+        debit_fai: false, debit_moy: false, debit_for: false,
+        vis_oui: false, vis_non: false, vis_aff: false, vis_autre: false,
+        org_ter: false, org_mau: false, org_cor: false, org_autre: false
       });
-      setFormData({ date: '', reference: '', type: '', material: '', nature: '' });
-      toast.success("Rapport ajouté avec succès");
     } catch (e) { 
       console.error("Error: ", e); 
-      toast.error("Échec de l'ajout du rapport");
+      toast.error(editingId ? "Échec de la mise à jour" : "Échec de l'ajout du rapport");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (item) => {
+    setEditingId(item.id);
+    let md = item.materialsData;
+    if (!md) {
+       // fallback for old records
+       md = { main: item.material || '', items: [] };
+    }
+    
+    setFormData({ 
+      date: item.date || '',
+      reference: item.reference || '',
+      type: item.type || '',
+      material: item.material || '',
+      materialsData: md,
+      nature: item.nature || '',
+      adresse: item.adresse || '', x: item.x || '', y: item.y || '', mapType: item.mapType || 'Normal', estimation: item.estimation || '', mat2: item.mat2 || '',
+      fuite_can: item.fuite_can || false, fuite_bra: item.fuite_bra || false,
+      mat_ac: item.mat_ac || false, mat_fg: item.mat_fg || false, mat_fd: item.mat_fd || false, mat_pe: item.mat_pe || false, mat_pvc: item.mat_pvc || false,
+      type_casse: item.type_casse || false, type_fissure: item.type_fissure || false, type_joint: item.type_joint || false, type_presse: item.type_presse || false, type_autre: item.type_autre || false,
+      debit_fai: item.debit_fai || false, debit_moy: item.debit_moy || false, debit_for: item.debit_for || false,
+      vis_oui: item.vis_oui || false, vis_non: item.vis_non || false, vis_aff: item.vis_aff || false, vis_autre: item.vis_autre || false,
+      org_ter: item.org_ter || false, org_mau: item.org_mau || false, org_cor: item.org_cor || false, org_autre: item.org_autre || false
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setFormData({ 
+      date: '', reference: '', type: '', material: '', nature: '',
+      materialsData: { main: '', items: [] },
+      adresse: '', x: '', y: '', mapType: 'Normal', estimation: '', mat2: '',
+      fuite_can: false, fuite_bra: false,
+      mat_ac: false, mat_fg: false, mat_fd: false, mat_pe: false, mat_pvc: false,
+      type_casse: false, type_fissure: false, type_joint: false, type_presse: false, type_autre: false,
+      debit_fai: false, debit_moy: false, debit_for: false,
+      vis_oui: false, vis_non: false, vis_aff: false, vis_autre: false,
+      org_ter: false, org_mau: false, org_cor: false, org_autre: false
+    });
   };
 
   const handleDelete = async (id) => {
@@ -270,13 +378,13 @@ export const useDashboardData = (user) => {
 
   return {
     // State
-    dataList, formData, selectedMonth, searchTerm, isSubmitting, currentPage, 
-    typeOptions, natureOptions,
+    dataList, formData, setFormData, selectedMonth, searchTerm, isSubmitting, currentPage, 
+    typeOptions, natureOptions, editingId,
     // Derived
     filteredList, paginatedList, totalPages, stats, chartData, months, ITEMS_PER_PAGE,
     // Setters
     setSelectedMonth, setSearchTerm, setCurrentPage,
     // Actions
-    handleChange, handleAdd, handleDelete, handleAddOption, handleRemoveOption
+    handleChange, handleAdd, handleDelete, handleAddOption, handleRemoveOption, handleEdit, handleCancelEdit
   };
 };

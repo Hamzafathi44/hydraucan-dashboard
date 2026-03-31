@@ -1,16 +1,42 @@
+import React, { useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Download, Plus, Filter, Calendar as CalendarIcon, 
-  Trash2, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle 
+  Trash2, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, PlusCircle, Edit2, FileDown, Loader2, FileText, MapPin
 } from 'lucide-react';
 import { generateReportPDF } from '../pdfGenerator';
+import SrmCheckboxItem from '../components/SrmCheckboxItem';
+import SrmMapPicker from '../components/SrmMapPicker';
+import MaterialBuilder from '../components/MaterialBuilder';
+import { formatMaterialsData } from '../hooks/useDashboardData';
+import { mapItemToSrmForm, generateSrmPdf } from '../srmPdfGenerator';
+import { toast } from 'sonner';
 
 export const MonthlyReportView = ({
-  stats, chartData, handleAdd, handleChange, formData, isSubmitting,
+  stats, chartData, handleAdd, handleChange, formData, setFormData, isSubmitting,
   typeOptions, natureOptions, searchTerm, setSearchTerm,
   months, selectedMonth, setSelectedMonth, paginatedList, handleDelete,
-  totalPages, currentPage, setCurrentPage, ITEMS_PER_PAGE, filteredList, handleAddOption
+  totalPages, currentPage, setCurrentPage, ITEMS_PER_PAGE, filteredList, handleAddOption,
+  editingId, handleEdit, handleCancelEdit
 }) => {
+  const [showFicheDetails, setShowFicheDetails] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [loadingPdfId, setLoadingPdfId] = useState(null);
+
+  const handleDownloadSingleSrm = async (item) => {
+    setLoadingPdfId(item.id);
+    try {
+      const form = mapItemToSrmForm(item);
+      await generateSrmPdf(form);
+      toast.success("Fiche d'exploitation générée");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erreur PDF");
+    } finally {
+      setLoadingPdfId(null);
+    }
+  };
+
   return (
     <Motion.div
       key="rapport"
@@ -49,9 +75,18 @@ export const MonthlyReportView = ({
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-2xl border border-line p-8 mb-12 shadow-sm"
       >
-        <div className="flex items-center gap-2 mb-6">
-          <Plus className="w-4 h-4 text-accent" />
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900">Créer un Nouveau Rapport</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            {editingId ? <Edit2 className="w-4 h-4 text-accent" /> : <Plus className="w-4 h-4 text-accent" />}
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900">
+              {editingId ? "Modifier le Rapport" : "Créer un Nouveau Rapport"}
+            </h2>
+          </div>
+          {editingId && (
+            <button type="button" onClick={handleCancelEdit} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-red-500 transition-colors">
+              Annuler
+            </button>
+          )}
         </div>
         
         <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
@@ -75,10 +110,21 @@ export const MonthlyReportView = ({
               {typeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Matériel</label>
-            <input name="material" placeholder="Matériels" onChange={handleChange} value={formData.material} className="input-field" />
+
+          <div className="col-span-1 md:col-span-3 lg:col-span-6 w-full">
+            <MaterialBuilder 
+              type={formData.type} 
+              data={formData.materialsData} 
+              onChange={(newMaterialsData) => {
+                setFormData({
+                  ...formData,
+                  materialsData: newMaterialsData,
+                  material: formatMaterialsData(newMaterialsData)
+                });
+              }}
+            />
           </div>
+
           <div className="space-y-1.5">
             <div className="flex items-center justify-between ml-1">
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nature</label>
@@ -91,11 +137,84 @@ export const MonthlyReportView = ({
               {natureOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
-          <button type="submit" disabled={isSubmitting} className="btn-primary">
-            {isSubmitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-            Ajouter
-          </button>
+          <div className="col-span-1 md:col-span-3 lg:col-span-6 flex gap-2 w-full mt-2">
+            <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
+              {isSubmitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
+              {editingId ? "MAJ" : "Ajouter"}
+            </button>
+            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="btn-outline px-4 flex-none border border-line bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
+              <FileText className="w-4 h-4" /> {showFicheDetails ? "Masquer la Fiche EAU" : "Ajouter les détails de la Fiche EAU"}
+            </button>
+          </div>
+          
+          {showFicheDetails && (
+            <div className="col-span-1 md:col-span-3 lg:col-span-6 mt-4 p-6 bg-slate-50 border border-line rounded-2xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-4">
+               {/* GPS + Address */}
+               <div className="space-y-4">
+                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Localisation</h3>
+                 <div>
+                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Adresse Exacte</label>
+                   <input name="adresse" value={formData.adresse} onChange={handleChange} className="input-field w-full" placeholder="Adresse complète..." />
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
+                   <div>
+                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">GPS X (Longitude)</label>
+                     <input name="x" value={formData.x} onChange={handleChange} className="input-field w-full font-mono text-sm" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">GPS Y (Latitude)</label>
+                     <input name="y" value={formData.y} onChange={handleChange} className="input-field w-full font-mono text-sm" />
+                   </div>
+                 </div>
+                 <div className="flex gap-2">
+                    <button type="button" onClick={() => setIsMapOpen(true)} className="flex-1 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-100 rounded-xl font-bold text-slate-600 transition-colors text-xs flex justify-center items-center gap-2">
+                      <MapPin className="w-4 h-4 text-indigo-500" /> Pointer sur la carte
+                    </button>
+                 </div>
+                 
+                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2 mt-6">Élément Fuite & Débit</h3>
+                 <div className="grid grid-cols-2 gap-2">
+                    <SrmCheckboxItem label="Canalisation" name="fuite_can" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Branchement" name="fuite_bra" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Débit Faible" name="debit_fai" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Débit Moyen" name="debit_moy" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Débit Fort" name="debit_for" form={formData} handleInputChange={handleChange} />
+                 </div>
+                 <input type="text" name="estimation" value={formData.estimation} onChange={handleChange} placeholder="Estimation (L/min)" className="input-field w-full mt-2" />
+               </div>
+
+               {/* Checkboxes */}
+               <div className="space-y-4">
+                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Origine & Matériaux</h3>
+                 <div className="grid grid-cols-2 gap-2 mb-4">
+                    <SrmCheckboxItem label="Terrain" name="org_ter" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Mauvaise Exé." name="org_mau" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Corrosion" name="org_cor" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Autre Org." name="org_autre" form={formData} handleInputChange={handleChange} />
+                 </div>
+                 
+                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Visualisation Fuite</h3>
+                 <div className="grid grid-cols-2 gap-2 mb-4">
+                    <SrmCheckboxItem label="Oui, visible" name="vis_oui" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Affaissement" name="vis_aff" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Casse cire" name="type_casse" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="Fissure" name="type_fissure" form={formData} handleInputChange={handleChange} />
+                 </div>
+                 
+                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Matériau</h3>
+                 <div className="grid grid-cols-3 gap-2">
+                    <SrmCheckboxItem label="AC" name="mat_ac" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="FG" name="mat_fg" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="FD" name="mat_fd" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="PE" name="mat_pe" form={formData} handleInputChange={handleChange} />
+                    <SrmCheckboxItem label="PVC" name="mat_pvc" form={formData} handleInputChange={handleChange} />
+                 </div>
+               </div>
+            </div>
+          )}
         </form>
+
+
       </Motion.section>
 
       {/* Filters & Table */}
@@ -146,12 +265,33 @@ export const MonthlyReportView = ({
                     </div>
                     <div className="data-value truncate pr-4">{item.reference || '-'}</div>
                     <div className="data-value truncate pr-4">{item.type || '-'}</div>
-                    <div className="data-value truncate pr-4">{item.material || '-'}</div>
+                    <div className="data-value truncate pr-4" title={formatMaterialsData(item.materialsData) || item.material}>
+                      {formatMaterialsData(item.materialsData) || item.material || '-'}
+                    </div>
                     <div className="data-value truncate pr-4">{item.nature || '-'}</div>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-1">
+                      <button 
+                        onClick={() => handleDownloadSingleSrm(item)}
+                        disabled={loadingPdfId === item.id}
+                        className="p-2 text-slate-300 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                        title="Générer Fiche d'Exploitation EAU PDF"
+                      >
+                        {loadingPdfId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          handleEdit(item);
+                          setShowFicheDetails(true);
+                        }}
+                        className="p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Modifier (Avec Fiche)"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                       <button 
                         onClick={() => handleDelete(item.id)}
                         className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -222,6 +362,18 @@ export const MonthlyReportView = ({
           </div>
         )}
       </section>
+
+      <SrmMapPicker 
+        isOpen={isMapOpen} 
+        onClose={() => setIsMapOpen(false)} 
+        onConfirm={(coords) => {
+           handleChange({ target: { name: 'x', value: coords.x, type: 'text' }});
+           handleChange({ target: { name: 'y', value: coords.y, type: 'text' }});
+           handleChange({ target: { name: 'mapType', value: coords.mapType || 'Normal', type: 'text' }});
+        }} 
+        initialLocation={{ x: formData.x, y: formData.y }}
+      />
     </Motion.div>
   );
 };
+

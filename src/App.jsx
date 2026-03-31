@@ -15,6 +15,7 @@ import { DashboardHome } from './pages/DashboardHome';
 import { MonthlyReportView } from './pages/MonthlyReportView';
 import { DatabaseView } from './pages/DatabaseView';
 import { SettingsView } from './pages/SettingsView';
+import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
 
 const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
   const dashboardData = useDashboardData(user); // explicitly pass user
@@ -38,6 +39,9 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
           <DatabaseView 
             {...dashboardData}
           />
+        )}
+        {activeView === 'fichier' && (
+          <FichierExploitationEauView user={user} {...dashboardData} />
         )}
         {activeView === 'settings' && (
           <SettingsView 
