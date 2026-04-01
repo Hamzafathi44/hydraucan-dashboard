@@ -26,7 +26,7 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="w-full max-w-[480px] px-8 md:px-16 py-12 flex flex-col h-full">
+    <div className="w-full max-w-[440px] px-8 md:px-10 py-12 flex flex-col bg-[#0A1020]/60 backdrop-blur-2xl border border-white/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] rounded-[2rem] my-auto">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-20">
         <div className="flex items-center">
@@ -36,9 +36,9 @@ export const LoginForm = () => {
             className="h-14 w-auto object-contain"
           />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all">
+        <button className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl text-xs font-bold text-white/70 hover:bg-white/5 hover:text-white transition-all">
           <img src="https://flagcdn.com/w20/gb.png" alt="UK Flag" className="w-4 h-3 object-cover rounded-sm" />
-          EN <ChevronDown className="w-3 h-3 text-slate-400" />
+          EN <ChevronDown className="w-3 h-3 text-white/50" />
         </button>
       </div>
 
@@ -48,38 +48,38 @@ export const LoginForm = () => {
           <img 
             src="/logo-hydracane.png" 
             alt="HYDRAUCAN Logo" 
-            className="w-full max-w-[260px] h-auto object-contain mx-auto mb-8"
+            className="w-full max-w-[260px] h-auto object-contain mx-auto mb-8 drop-shadow-[0_0_15px_rgba(255,255,255,0.7)] brightness-200"
           />
-          <p className="text-slate-500 text-base font-medium">Welcome to HYDRAUCAN</p>
+          <p className="text-white/60 text-base font-medium">Welcome to HYDRAUCAN</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email / Identifiant</label>
+            <label className="text-[11px] font-bold text-white/40 uppercase tracking-widest ml-1">Email / Identifiant</label>
             <input
               type="text"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="uisocial-input"
+              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white text-sm font-medium placeholder:text-white/30 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-500/50 transition-all"
               placeholder="admin (ou adresse complète)"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Password</label>
+              <label className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Password</label>
             </div>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="uisocial-input"
+              className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white text-sm font-medium placeholder:text-white/30 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-500/50 transition-all"
               placeholder="••••••••"
             />
             <div className="text-right mt-2">
-              <button type="button" className="text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors">
+              <button type="button" className="text-[11px] font-bold text-white/50 hover:text-white/80 transition-colors">
                 Forgot password?
               </button>
             </div>
@@ -88,7 +88,7 @@ export const LoginForm = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="uisocial-btn-primary mt-6 flex justify-center items-center"
+            className="w-full py-5 mt-6 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-base font-black rounded-2xl shadow-[0_12px_24px_rgba(6,182,212,0.2)] transition-all active:scale-[0.98] tracking-tight flex justify-center items-center"
           >
             {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Login"}
           </button>

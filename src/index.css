@@ -5,11 +5,11 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-bg: #F8F9FA;
-  --color-ink: #1E2B58;
-  --color-line: #E2E8F0;
-  --color-accent: #FDB913;
-  --color-sidebar: #FFFFFF;
+  --color-bg: #030303;
+  --color-ink: #F8F9FA;
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-accent: #06b6d4;  /* Cyan-500 for water theme */
+  --color-sidebar: rgba(10, 16, 32, 0.4); /* Frost glass */
 }
 
 @layer base {
@@ -32,7 +32,7 @@
   }
 
   .stat-card {
-    @apply bg-white p-6 rounded-2xl border border-line shadow-sm flex flex-col gap-2 transition-all hover:shadow-md hover:-translate-y-1;
+    @apply bg-slate-900/40 backdrop-blur-xl p-6 rounded-2xl border border-line shadow-lg flex flex-col gap-2 transition-all hover:shadow-cyan-500/20 hover:-translate-y-1;
   }
 
   .data-grid {
@@ -40,7 +40,7 @@
   }
 
   .data-row {
-    @apply grid grid-cols-[1fr_1.5fr_1fr_1fr_1fr_60px] p-4 border-b border-line transition-all duration-200 hover:bg-slate-50 cursor-default;
+    @apply grid grid-cols-[1fr_1.5fr_1fr_1fr_1fr_60px] p-4 border-b border-line transition-all duration-200 hover:bg-slate-800/40 cursor-default;
   }
 
   .col-header {
@@ -48,7 +48,7 @@
   }
 
   .data-value {
-    @apply text-sm font-medium text-slate-700;
+    @apply text-sm font-medium text-slate-200;
   }
 
   .data-mono {
@@ -56,7 +56,7 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-2.5 bg-white border border-line rounded-xl text-sm font-medium transition-all focus:outline-none focus:ring-4 focus:ring-accent/10 focus:border-accent;
+    @apply w-full px-4 py-2.5 bg-black/20 border border-line rounded-xl text-sm font-medium text-white placeholder:text-white/40 transition-all focus:outline-none focus:ring-4 focus:ring-accent/20 focus:border-accent backdrop-blur-sm;
   }
 
   select.input-field {
@@ -68,23 +68,23 @@
   }
 
   .btn-primary {
-    @apply px-6 py-2.5 bg-ink text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
+    @apply px-6 py-2.5 bg-cyan-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
   }
 
   .btn-accent {
-    @apply px-6 py-2.5 bg-accent text-ink text-xs font-bold uppercase tracking-widest rounded-xl transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
+    @apply px-6 py-2.5 bg-accent text-slate-950 text-xs font-bold uppercase tracking-widest rounded-xl transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
   }
 
   .month-pill {
-    @apply px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-full border border-line transition-all hover:border-slate-300 bg-white;
+    @apply px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-full border border-line transition-all hover:border-slate-600 bg-white/5 text-slate-300;
   }
 
   .month-pill-active {
-    @apply bg-accent text-ink border-accent;
+    @apply bg-accent text-slate-950 border-accent font-black;
   }
 
   .search-bar {
-    @apply flex items-center gap-3 px-4 py-2.5 bg-white border border-line rounded-xl w-full max-w-md focus-within:ring-4 focus-within:ring-accent/10 focus-within:border-accent transition-all;
+    @apply flex items-center gap-3 px-4 py-2.5 bg-black/20 border border-line rounded-xl w-full max-w-md focus-within:ring-4 focus-within:ring-accent/10 focus-within:border-accent transition-all backdrop-blur-sm text-white;
   }
 
   .scrollbar-hide::-webkit-scrollbar {

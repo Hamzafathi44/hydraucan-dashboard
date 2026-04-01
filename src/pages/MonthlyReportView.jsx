@@ -47,7 +47,7 @@ export const MonthlyReportView = ({
       {/* Top Header */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-2">RAPPORT MENSUEL</h1>
+          <h1 className="text-3xl font-black tracking-tight text-white mb-2">RAPPORT MENSUEL</h1>
           <p className="text-slate-400 text-sm font-medium">Gérez et exportez vos rapports de travail mensuels avec précision.</p>
         </div>
 
@@ -73,12 +73,12 @@ export const MonthlyReportView = ({
       <Motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl border border-line p-8 mb-12 shadow-sm"
+        className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 mb-12 shadow-lg"
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            {editingId ? <Edit2 className="w-4 h-4 text-accent" /> : <Plus className="w-4 h-4 text-accent" />}
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900">
+            {editingId ? <Edit2 className="w-4 h-4 text-cyan-500" /> : <Plus className="w-4 h-4 text-cyan-500" />}
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white">
               {editingId ? "Modifier le Rapport" : "Créer un Nouveau Rapport"}
             </h2>
           </div>
@@ -142,16 +142,16 @@ export const MonthlyReportView = ({
               {isSubmitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
               {editingId ? "MAJ" : "Ajouter"}
             </button>
-            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="btn-outline px-4 flex-none border border-line bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
+            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="px-4 flex-none border border-line bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
               <FileText className="w-4 h-4" /> {showFicheDetails ? "Masquer la Fiche EAU" : "Ajouter les détails de la Fiche EAU"}
             </button>
           </div>
           
           {showFicheDetails && (
-            <div className="col-span-1 md:col-span-3 lg:col-span-6 mt-4 p-6 bg-slate-50 border border-line rounded-2xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-4">
+            <div className="col-span-1 md:col-span-3 lg:col-span-6 mt-4 p-6 bg-white/5 border border-line rounded-2xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-top-4">
                {/* GPS + Address */}
                <div className="space-y-4">
-                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Localisation</h3>
+                 <h3 className="text-sm font-black uppercase text-white border-b border-line pb-2">Localisation</h3>
                  <div>
                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Adresse Exacte</label>
                    <input name="adresse" value={formData.adresse} onChange={handleChange} className="input-field w-full" placeholder="Adresse complète..." />
@@ -167,12 +167,12 @@ export const MonthlyReportView = ({
                    </div>
                  </div>
                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setIsMapOpen(true)} className="flex-1 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-100 rounded-xl font-bold text-slate-600 transition-colors text-xs flex justify-center items-center gap-2">
-                      <MapPin className="w-4 h-4 text-indigo-500" /> Pointer sur la carte
+                    <button type="button" onClick={() => setIsMapOpen(true)} className="flex-1 px-4 py-2 border border-line bg-cyan-500/10 hover:bg-cyan-500/20 rounded-xl font-bold text-cyan-400 transition-colors text-xs flex justify-center items-center gap-2">
+                      <MapPin className="w-4 h-4" /> Pointer sur la carte
                     </button>
                  </div>
                  
-                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2 mt-6">Élément Fuite & Débit</h3>
+                 <h3 className="text-sm font-black uppercase text-white border-b border-line pb-2 mt-6">Élément Fuite & Débit</h3>
                  <div className="grid grid-cols-2 gap-2">
                     <SrmCheckboxItem label="Canalisation" name="fuite_can" form={formData} handleInputChange={handleChange} />
                     <SrmCheckboxItem label="Branchement" name="fuite_bra" form={formData} handleInputChange={handleChange} />
@@ -185,7 +185,7 @@ export const MonthlyReportView = ({
 
                {/* Checkboxes */}
                <div className="space-y-4">
-                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Origine & Matériaux</h3>
+                 <h3 className="text-sm font-black uppercase text-white border-b border-line pb-2">Origine & Matériaux</h3>
                  <div className="grid grid-cols-2 gap-2 mb-4">
                     <SrmCheckboxItem label="Terrain" name="org_ter" form={formData} handleInputChange={handleChange} />
                     <SrmCheckboxItem label="Mauvaise Exé." name="org_mau" form={formData} handleInputChange={handleChange} />
@@ -193,7 +193,7 @@ export const MonthlyReportView = ({
                     <SrmCheckboxItem label="Autre Org." name="org_autre" form={formData} handleInputChange={handleChange} />
                  </div>
                  
-                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Visualisation Fuite</h3>
+                 <h3 className="text-sm font-black uppercase text-white border-b border-line pb-2">Visualisation Fuite</h3>
                  <div className="grid grid-cols-2 gap-2 mb-4">
                     <SrmCheckboxItem label="Oui, visible" name="vis_oui" form={formData} handleInputChange={handleChange} />
                     <SrmCheckboxItem label="Affaissement" name="vis_aff" form={formData} handleInputChange={handleChange} />
@@ -201,7 +201,7 @@ export const MonthlyReportView = ({
                     <SrmCheckboxItem label="Fissure" name="type_fissure" form={formData} handleInputChange={handleChange} />
                  </div>
                  
-                 <h3 className="text-sm font-black uppercase text-slate-800 border-b border-line pb-2">Matériau</h3>
+                 <h3 className="text-sm font-black uppercase text-white border-b border-line pb-2">Matériau</h3>
                  <div className="grid grid-cols-3 gap-2">
                     <SrmCheckboxItem label="AC" name="mat_ac" form={formData} handleInputChange={handleChange} />
                     <SrmCheckboxItem label="FG" name="mat_fg" form={formData} handleInputChange={handleChange} />
@@ -237,8 +237,8 @@ export const MonthlyReportView = ({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-line overflow-hidden shadow-sm">
-          <div className="data-row bg-slate-50/50 border-b-2 border-line">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-hidden shadow-lg">
+          <div className="data-row bg-white/5 border-b-2 border-line">
             <div className="col-header">Date</div>
             <div className="col-header">Références</div>
             <div className="col-header">Type</div>
@@ -321,7 +321,7 @@ export const MonthlyReportView = ({
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-4">
             <p className="text-xs font-medium text-slate-400">
-              Affichage de <span className="text-slate-900">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> à <span className="text-slate-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredList.length)}</span> sur <span className="text-slate-900">{filteredList.length}</span> résultats
+              Affichage de <span className="text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> à <span className="text-white">{Math.min(currentPage * ITEMS_PER_PAGE, filteredList.length)}</span> sur <span className="text-white">{filteredList.length}</span> résultats
             </p>
             <div className="flex items-center gap-2">
               <button 
@@ -344,7 +344,7 @@ export const MonthlyReportView = ({
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${currentPage === page ? 'bg-ink text-white' : 'hover:bg-slate-50 text-slate-400'}`}
+                      className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${currentPage === page ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'hover:bg-white/10 text-slate-400'}`}
                     >
                       {page}
                     </button>

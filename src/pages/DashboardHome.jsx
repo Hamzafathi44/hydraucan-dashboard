@@ -15,7 +15,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
       className="space-y-8"
     >
       <header className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-2">Tableau de Bord Analytique</h1>
+        <h1 className="text-3xl font-black tracking-tight text-white mb-2">Tableau de Bord Analytique</h1>
         <p className="text-slate-400 text-sm font-medium">Analyse détaillée des performances et de la consommation du mois en cours.</p>
       </header>
 
@@ -34,12 +34,12 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
               <stat.icon className={`w-5 h-5 ${stat.color}`} />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-2xl font-black text-slate-900">{stat.value}</span>
+              <span className="text-2xl font-black text-white">{stat.value}</span>
               {stat.breakdown && (
                 <div className="flex items-center gap-3 mt-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                  <span>RNVL: <span className="text-slate-700">{stat.breakdown.RNVL || 0}</span></span>
-                  <span>FUITE: <span className="text-slate-700">{stat.breakdown.FUITE || 0}</span></span>
-                  <span>F. SP: <span className="text-slate-700">{stat.breakdown['F. SP'] || 0}</span></span>
+                  <span>RNVL: <span className="text-cyan-400">{stat.breakdown.RNVL || 0}</span></span>
+                  <span>FUITE: <span className="text-cyan-400">{stat.breakdown.FUITE || 0}</span></span>
+                  <span>F. SP: <span className="text-cyan-400">{stat.breakdown['F. SP'] || 0}</span></span>
                 </div>
               )}
             </div>
@@ -49,10 +49,10 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Work Schedule Chart */}
-        <div className="bg-white rounded-2xl border border-line p-8 shadow-sm">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
-            <CalendarIcon className="w-4 h-4 text-accent" />
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900">Calendrier de Travail (Mois en cours)</h2>
+            <CalendarIcon className="w-4 h-4 text-cyan-500" />
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white">Calendrier de Travail (Mois en cours)</h2>
           </div>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -72,24 +72,25 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
                 });
                 return schedule;
               })()}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} />
-                <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} stroke="#94a3b8" />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#94a3b8" />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ backgroundColor: '#0A1020', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.5)' }}
+                  itemStyle={{ color: '#fff' }}
+                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                 />
-                <Bar dataKey="count" fill="#F27D26" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="#06b6d4" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Nature Distribution Chart */}
-        <div className="bg-white rounded-2xl border border-line p-8 shadow-sm">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
-            <PieChartIcon className="w-4 h-4 text-accent" />
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900">Répartition par Nature</h2>
+            <PieChartIcon className="w-4 h-4 text-cyan-500" />
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white">Répartition par Nature</h2>
           </div>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -105,10 +106,10 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#F27D26', '#141414', '#94a3b8', '#3b82f6', '#10b981', '#f59e0b'][index % 6]} />
+                    <Cell key={`cell-${index}`} fill={['#06b6d4', '#3b82f6', '#0ea5e9', '#6366f1', '#10b981', '#f59e0b'][index % 6]} stroke="rgba(255,255,255,0.05)" />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ backgroundColor: '#0A1020', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} itemStyle={{ color: '#fff' }} />
                 <Legend verticalAlign="bottom" height={36}/>
               </PieChart>
             </ResponsiveContainer>
@@ -118,10 +119,10 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Material Consumption */}
-        <div className="lg:col-span-1 bg-white rounded-2xl border border-line p-8 shadow-sm">
+        <div className="lg:col-span-1 bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
-            <Activity className="w-4 h-4 text-accent" />
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900">Consommation de Matériel</h2>
+            <Activity className="w-4 h-4 text-cyan-500" />
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white">Consommation de Matériel</h2>
           </div>
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
             {(() => {
@@ -146,9 +147,9 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
               if (sortedMats.length === 0) return <p className="text-slate-400 text-sm italic">Aucun matériel enregistré ce mois-ci.</p>;
 
               return sortedMats.map(([name, count]) => (
-                <div key={name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-line">
-                  <span className="text-sm font-medium text-slate-700">{name}</span>
-                  <span className="px-2 py-1 bg-white rounded-lg text-[10px] font-bold text-accent border border-line">{count} fois</span>
+                <div key={name} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                  <span className="text-sm font-medium text-slate-200">{name}</span>
+                  <span className="px-2 py-1 bg-cyan-500/10 rounded-lg text-[10px] font-bold text-cyan-400 border border-cyan-500/20">{count} fois</span>
                 </div>
               ));
             })()}
@@ -156,10 +157,10 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
         </div>
 
         {/* Nature Summary Table */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-line p-8 shadow-sm">
+        <div className="lg:col-span-2 bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
-            <BarChart3 className="w-4 h-4 text-accent" />
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-900">Résumé des Travaux par Nature</h2>
+            <BarChart3 className="w-4 h-4 text-cyan-500" />
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white">Résumé des Travaux par Nature</h2>
           </div>
           <div className="overflow-hidden">
             <table className="w-full text-left">
@@ -198,11 +199,11 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
                     const prevCount = lastMonthNatures[name] || 0;
                     const diff = count - prevCount;
                     return (
-                      <tr key={name} className="group hover:bg-slate-50/50 transition-colors">
-                        <td className="py-4 text-sm font-medium text-slate-700">{name}</td>
-                        <td className="py-4 text-sm font-black text-slate-900 text-center">{count}</td>
+                      <tr key={name} className="group hover:bg-slate-800/40 transition-colors">
+                        <td className="py-4 text-sm font-medium text-slate-200">{name}</td>
+                        <td className="py-4 text-sm font-black text-white text-center">{count}</td>
                         <td className="py-4 text-right">
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${diff >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${diff >= 0 ? 'bg-cyan-500/10 text-cyan-400' : 'bg-red-500/10 text-red-400'}`}>
                             {diff >= 0 ? '+' : ''}{diff}
                           </span>
                         </td>

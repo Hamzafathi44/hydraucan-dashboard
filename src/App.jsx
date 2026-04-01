@@ -3,6 +3,7 @@ import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { LoginForm } from './components/LoginForm';
 import { DashboardPreview } from './components/DashboardPreview';
+import { HeroGeometric } from './components/ui/shape-landing-hero';
 import { Toaster } from 'sonner';
 import { AnimatePresence } from 'motion/react';
 
@@ -16,6 +17,7 @@ import { MonthlyReportView } from './pages/MonthlyReportView';
 import { DatabaseView } from './pages/DatabaseView';
 import { SettingsView } from './pages/SettingsView';
 import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
+import { StatisticsView } from './pages/StatisticsView';
 
 const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
   const dashboardData = useDashboardData(user); // explicitly pass user
@@ -39,6 +41,9 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
           <DatabaseView 
             {...dashboardData}
           />
+        )}
+        {activeView === 'statistics' && (
+          <StatisticsView dataList={dashboardData.dataList} />
         )}
         {activeView === 'fichier' && (
           <FichierExploitationEauView user={user} {...dashboardData} />
@@ -79,17 +84,12 @@ function App() {
 
   if (!user) {
     return (
-      <main className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 lg:p-12" style={{ backgroundImage: "radial-gradient(circle at 50% 50%, #1A2B56 0%, #050505 100%)", backgroundColor: "#0F0F0F" }}>
+      <HeroGeometric>
         <Toaster position="top-right" richColors />
-        <div className="uisocial-card w-full max-w-7xl flex flex-col md:flex-row min-h-[800px]">
-          <div className="w-full md:w-[45%] lg:w-[42%] relative flex items-stretch">
-            <DashboardPreview />
-          </div>
-          <div className="flex-1 bg-white flex items-center justify-center h-full">
-            <LoginForm />
-          </div>
+        <div className="relative z-20 w-full flex items-center justify-center pointer-events-auto px-4 mt-8 md:mt-0">
+          <LoginForm />
         </div>
-      </main>
+      </HeroGeometric>
     );
   }
 

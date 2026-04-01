@@ -14,7 +14,7 @@ export const DatabaseView = ({
     >
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 mb-2">Base de données complète</h1>
+          <h1 className="text-3xl font-black tracking-tight text-white mb-2">Base de données complète</h1>
           <p className="text-slate-400 text-sm font-medium">Consultez l'historique complet de tous les travaux enregistrés.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -31,8 +31,8 @@ export const DatabaseView = ({
         </div>
       </header>
 
-      <div className="bg-white rounded-2xl border border-line overflow-hidden shadow-sm">
-        <div className="data-row bg-slate-50/50 border-b-2 border-line">
+      <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-hidden shadow-lg">
+        <div className="data-row bg-white/5 border-b-2 border-line">
           <div className="col-header">Date</div>
           <div className="col-header">Références</div>
           <div className="col-header">Type</div>
@@ -76,13 +76,13 @@ export const DatabaseView = ({
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-6">
           <p className="text-xs font-medium text-slate-400">
-            Affichage de <span className="text-slate-900">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> à <span className="text-slate-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredList.length)}</span> sur <span className="text-slate-900">{filteredList.length}</span> résultats
+            Affichage de <span className="text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> à <span className="text-white">{Math.min(currentPage * ITEMS_PER_PAGE, filteredList.length)}</span> sur <span className="text-white">{filteredList.length}</span> résultats
           </p>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="p-2 border border-line rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -99,7 +99,7 @@ export const DatabaseView = ({
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${currentPage === page ? 'bg-ink text-white' : 'hover:bg-slate-50 text-slate-400'}`}
+                    className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${currentPage === page ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'hover:bg-white/10 text-slate-400'}`}
                   >
                     {page}
                   </button>
@@ -109,7 +109,7 @@ export const DatabaseView = ({
             <button 
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-2 border border-line rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
