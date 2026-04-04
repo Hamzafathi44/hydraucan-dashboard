@@ -23,19 +23,7 @@ export const MonthlyReportView = ({
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [loadingPdfId, setLoadingPdfId] = useState(null);
 
-  const handleDownloadSingleSrm = async (item) => {
-    setLoadingPdfId(item.id);
-    try {
-      const form = mapItemToSrmForm(item);
-      await generateSrmPdf(form);
-      toast.success("Fiche d'exploitation générée");
-    } catch (error) {
-      console.error(error);
-      toast.error("Erreur PDF");
-    } finally {
-      setLoadingPdfId(null);
-    }
-  };
+
 
   return (
     <Motion.div
@@ -270,14 +258,7 @@ export const MonthlyReportView = ({
                     </div>
                     <div className="data-value truncate pr-4">{item.nature || '-'}</div>
                     <div className="flex justify-end gap-1">
-                      <button 
-                        onClick={() => handleDownloadSingleSrm(item)}
-                        disabled={loadingPdfId === item.id}
-                        className="p-2 text-slate-300 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                        title="Générer Fiche d'Exploitation EAU PDF"
-                      >
-                        {loadingPdfId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-                      </button>
+
                       <button 
                         onClick={() => {
                           handleEdit(item);

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { 
-  Menu, X, LayoutDashboard, FileText, TrendingUp, Settings, LogOut, Droplets, PieChart 
+  Menu, X, LayoutDashboard, FileText, TrendingUp, Settings, LogOut, Droplets, PieChart, Clock 
 } from 'lucide-react';
 
 export const DashboardLayout = ({ children, activeView, setActiveView }) => {
@@ -43,6 +43,14 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             <LayoutDashboard className="w-5 h-5" />
             TABLEAU DE BORD
           </button>
+
+          <button 
+            onClick={() => { setActiveView('pointage'); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'pointage' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+          >
+            <Clock className="w-5 h-5" />
+            POINTAGE
+          </button>
           <button 
             onClick={() => { setActiveView('rapport'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'rapport' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
@@ -50,13 +58,7 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             <FileText className="w-5 h-5" />
             RAPPORT MENSUEL
           </button>
-          <button 
-            onClick={() => { setActiveView('database'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'database' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <TrendingUp className="w-5 h-5" />
-            Base de données
-          </button>
+
           <button 
             onClick={() => { setActiveView('statistics'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'statistics' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
@@ -64,6 +66,7 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             <PieChart className="w-5 h-5" />
             Toutes les Statistiques
           </button>
+
           <button 
             onClick={() => { setActiveView('fichier'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'fichier' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
@@ -71,6 +74,7 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             <Droplets className="w-5 h-5" />
             Fichier EXPLOITATION EAU
           </button>
+
           <button 
             onClick={() => { setActiveView('settings'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'settings' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}

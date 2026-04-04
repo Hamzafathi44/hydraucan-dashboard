@@ -1,24 +1,24 @@
 "use client";
 
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { Circle, Droplets } from "lucide-react";
+import { Circle, Droplets, Wrench, Settings, Hammer, MapPin, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../../lib/utils";
 
-function ElegantShape({
+function MaterialShape({
     className,
     delay = 0,
-    width = 400,
-    height = 100,
+    size = 150,
     rotate = 0,
     gradient = "from-white/[0.08]",
+    icon: Icon,
 }: {
     className?: string;
     delay?: number;
-    width?: number;
-    height?: number;
+    size?: number;
     rotate?: number;
     gradient?: string;
+    icon?: any;
 }) {
     return (
         <motion.div
@@ -43,31 +43,50 @@ function ElegantShape({
             <motion.div
                 animate={{
                     y: [0, 25, 0],
-                    scale: [1, 1.03, 1],
+                    scale: [1, 1.05, 1],
                     x: [0, -15, 0]
                 }}
                 transition={{
-                    duration: 24,
+                    duration: 20 + delay * 2,
                     repeat: Number.POSITIVE_INFINITY,
                     ease: "easeInOut",
                 }}
+                className="relative flex items-center justify-center p-6"
                 style={{
-                    width,
-                    height,
+                    width: size,
+                    height: size,
                 }}
-                className="relative"
             >
-                <div
+                <motion.div
+                    animate={{
+                        borderRadius: [
+                            "41% 59% 70% 30% / 41% 51% 49% 59%",
+                            "61% 39% 31% 69% / 61% 31% 69% 39%",
+                            "51% 49% 61% 39% / 51% 61% 39% 49%",
+                            "41% 59% 70% 30% / 41% 51% 49% 59%"
+                        ]
+                    }}
+                    transition={{
+                        duration: 8 + delay * 5, 
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "easeInOut",
+                    }}
                     className={cn(
-                        "absolute inset-0 rounded-full",
-                        "bg-gradient-to-r to-transparent",
+                        "absolute inset-0 overflow-hidden flex items-center justify-center",
+                        "bg-gradient-to-br to-transparent",
                         gradient,
-                        "backdrop-blur-[2px] border-2 border-white/[0.15]",
-                        "shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]",
-                        "after:absolute after:inset-0 after:rounded-full",
-                        "after:bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.2),transparent_70%)]"
+                        "backdrop-blur-[6px] border border-white/[0.2]",
+                        "shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]"
                     )}
-                />
+                >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.15),transparent_70%)]" />
+                    {Icon && (
+                        <Icon 
+                            className="w-1/2 h-1/2 text-white/50 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] relative z-10" 
+                            strokeWidth={1.5} 
+                        />
+                    )}
+                </motion.div>
             </motion.div>
         </motion.div>
     );
@@ -103,50 +122,59 @@ function HeroGeometric({
         >
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/[0.05] via-transparent to-blue-500/[0.05] blur-3xl" />
 
-            <div className="absolute inset-0 overflow-hidden">
-                <ElegantShape
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <MaterialShape
                     delay={0.3}
-                    width={600}
-                    height={140}
+                    size={280}
                     rotate={12}
-                    gradient="from-cyan-500/[0.25]"
-                    className="left-[-10%] md:left-[-5%] top-[15%] md:top-[20%]"
+                    icon={Wrench}
+                    gradient="from-cyan-500/[0.2] to-transparent"
+                    className="left-[-5%] md:left-[5%] top-[10%] md:top-[15%]"
                 />
 
-                <ElegantShape
+                <MaterialShape
                     delay={0.5}
-                    width={500}
-                    height={120}
+                    size={240}
                     rotate={-15}
-                    gradient="from-blue-500/[0.25]"
-                    className="right-[-5%] md:right-[0%] top-[70%] md:top-[75%]"
+                    icon={Hammer}
+                    gradient="from-blue-500/[0.2] to-transparent"
+                    className="right-[-5%] md:right-[5%] top-[70%] md:top-[65%]"
                 />
 
-                <ElegantShape
+                <MaterialShape
                     delay={0.4}
-                    width={300}
-                    height={80}
+                    size={200}
                     rotate={-8}
-                    gradient="from-[#1A2B56]/[0.4]"
-                    className="left-[5%] md:left-[10%] bottom-[5%] md:bottom-[10%]"
+                    icon={Truck}
+                    gradient="from-[#1A2B56]/[0.6] to-transparent"
+                    className="left-[5%] md:left-[15%] bottom-[10%] md:bottom-[15%]"
                 />
 
-                <ElegantShape
+                <MaterialShape
                     delay={0.6}
-                    width={200}
-                    height={60}
+                    size={160}
                     rotate={20}
-                    gradient="from-sky-400/[0.25]"
-                    className="right-[15%] md:right-[20%] top-[10%] md:top-[15%]"
+                    icon={MapPin}
+                    gradient="from-sky-400/[0.2] to-transparent"
+                    className="right-[15%] md:right-[20%] top-[10%] md:top-[12%]"
                 />
 
-                <ElegantShape
+                <MaterialShape
                     delay={0.7}
-                    width={150}
-                    height={40}
+                    size={140}
                     rotate={-25}
-                    gradient="from-indigo-400/[0.25]"
-                    className="left-[20%] md:left-[25%] top-[5%] md:top-[10%]"
+                    icon={Settings}
+                    gradient="from-indigo-400/[0.2] to-transparent"
+                    className="left-[25%] md:left-[30%] top-[5%] md:top-[8%]"
+                />
+                
+                <MaterialShape
+                    delay={0.2}
+                    size={180}
+                    rotate={15}
+                    icon={Droplets}
+                    gradient="from-cyan-300/[0.15] to-transparent"
+                    className="right-[40%] md:right-[45%] bottom-[5%] md:bottom-[8%]"
                 />
             </div>
 

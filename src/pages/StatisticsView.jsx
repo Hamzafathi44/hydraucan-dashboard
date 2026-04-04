@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion as Motion } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
-import { BarChart3, PieChart as PieChartIcon, TrendingUp, Activity, AlertTriangle } from 'lucide-react';
+import { BarChart3, PieChart as PieChartIcon, TrendingUp, Activity, AlertTriangle, Wrench, Filter } from 'lucide-react';
 
 export const StatisticsView = ({ dataList }) => {
   // 1. Évolution Mensuelle (Derniers 12 mois)
@@ -27,20 +27,33 @@ export const StatisticsView = ({ dataList }) => {
     return months;
   }, [dataList]);
 
-  // 2. Répartition par Type (Tous)
+  const months = useMemo(() => {
+    return ['Tous', ...new Set(dataList.map(item => new Date(item.date).toLocaleString('fr-FR', { month: 'long', year: 'numeric' })))];
+  }, [dataList]);
+
+  const [selectedMonth, setSelectedMonth] = useState('Tous');
+
+  const filteredData = useMemo(() => {
+    if (selectedMonth === 'Tous') return dataList;
+    return dataList.filter(item => 
+      new Date(item.date).toLocaleString('fr-FR', { month: 'long', year: 'numeric' }) === selectedMonth
+    );
+  }, [dataList, selectedMonth]);
+
+  // 2. Répartition par Type
   const typeData = useMemo(() => {
-    const counts = dataList.reduce((acc, curr) => {
+    const counts = filteredData.reduce((acc, curr) => {
       const type = curr.type ? curr.type.toUpperCase() : 'INCONNU';
       acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {});
     return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [dataList]);
+  }, [filteredData]);
 
   // 3. Matériaux de Conduites (Fuites)
   const pipeMaterials = useMemo(() => {
     let ac = 0, fg = 0, fd = 0, pe = 0, pvc = 0;
-    dataList.forEach(item => {
+    filteredData.forEach(item => {
       if (item.mat_ac) ac++;
       if (item.mat_fg) fg++;
       if (item.mat_fd) fd++;
@@ -54,29 +67,33 @@ export const StatisticsView = ({ dataList }) => {
       { name: 'PE/PEHD', value: pe },
       { name: 'PVC', value: pvc }
     ].filter(m => m.value > 0).sort((a, b) => b.value - a.value);
-  }, [dataList]);
+  }, [filteredData]);
 
-  // 4. Origine des Fuites (Causes)
-  const leakOrigins = useMemo(() => {
-    let ter = 0, mau = 0, cor = 0, autre = 0;
-    dataList.forEach(item => {
-      if (item.org_ter) ter++;
-      if (item.org_mau) mau++;
-      if (item.org_cor) cor++;
-      if (item.org_autre) autre++;
+  // 4. Matériels Consommés
+  const consumedMaterials = useMemo(() => {
+    const counts = {};
+    filteredData.forEach(item => {
+      if (item.materialsData && item.materialsData.items) {
+         item.materialsData.items.forEach(mat => {
+            if (mat.article) {
+               const qty = parseFloat(mat.qty) || 1;
+               const unit = ['Tuyau', 'tuyau'].includes(mat.article) ? 'ml' : 'u';
+               const key = `${mat.article} (${unit})`;
+               counts[key] = (counts[key] || 0) + qty;
+            }
+         });
+      }
     });
-    return [
-      { name: 'Terrassement', value: ter },
-      { name: 'Mauvaise Pose', value: mau },
-      { name: 'Corrosion', value: cor },
-      { name: 'Autre', value: autre }
-    ].filter(o => o.value > 0).sort((a, b) => b.value - a.value);
-  }, [dataList]);
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8); // Top 8 consumed materials
+  }, [filteredData]);
 
   // 5. Répartition par Débit
   const debitData = useMemo(() => {
     let faible = 0, moyen = 0, fort = 0;
-    dataList.forEach(item => {
+    filteredData.forEach(item => {
       if (item.debit_fai) faible++;
       if (item.debit_moy) moyen++;
       if (item.debit_for) fort++;
@@ -86,7 +103,7 @@ export const StatisticsView = ({ dataList }) => {
       { name: 'Moyen', value: moyen },
       { name: 'Fort', value: fort }
     ].filter(d => d.value > 0);
-  }, [dataList]);
+  }, [filteredData]);
 
   const COLORS = ['#06b6d4', '#3b82f6', '#0ea5e9', '#6366f1', '#10b981', '#f59e0b'];
 
@@ -114,10 +131,33 @@ export const StatisticsView = ({ dataList }) => {
       exit={{ opacity: 0, x: -20 }}
       className="space-y-8"
     >
-      <header className="mb-8">
+      <header className="mb-4">
         <h1 className="text-3xl font-black tracking-tight text-white mb-2">Toutes les Statistiques</h1>
         <p className="text-slate-400 text-sm font-medium">Analyse approfondie et historique global des interventions.</p>
       </header>
+      
+      {/* Filters */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-400" />
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Filtrer par Mois</h2>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-xl">
+          {months.map(m => (
+            <button 
+              key={m} 
+              onClick={() => setSelectedMonth(m)} 
+              className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                selectedMonth === m 
+                ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' 
+                : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-line'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Row 1: Area Chart (Full Width) */}
       <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
@@ -208,22 +248,22 @@ export const StatisticsView = ({ dataList }) => {
       {/* Row 3: Origins & Flow Rates */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* Origins of Leaks */}
+        {/* Consumed Materials */}
         <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
-            <AlertTriangle className="w-5 h-5 text-cyan-500" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white">Origine des Fuites (Causes)</h2>
+            <Wrench className="w-5 h-5 text-cyan-500" />
+            <h2 className="text-sm font-bold uppercase tracking-widest text-white">Matériels Consommés</h2>
           </div>
           <div className="h-[300px]">
-             {leakOrigins.length > 0 ? (
+             {consumedMaterials.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={leakOrigins} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                  <BarChart data={consumedMaterials} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="name" fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" />
                     <YAxis fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" />
                     <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                    <Bar dataKey="value" name="Occurrences" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40}>
-                      {leakOrigins.map((entry, index) => (
+                    <Bar dataKey="value" name="Quantité" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40}>
+                      {consumedMaterials.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
                       ))}
                     </Bar>

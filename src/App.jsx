@@ -14,10 +14,11 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 // View Pages
 import { DashboardHome } from './pages/DashboardHome';
 import { MonthlyReportView } from './pages/MonthlyReportView';
-import { DatabaseView } from './pages/DatabaseView';
+import { DatabaseView } from './pages/DatabaseView'; // Keep removed or re-add? User only asked for Fichier Exploitation EAU back
 import { SettingsView } from './pages/SettingsView';
 import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
 import { StatisticsView } from './pages/StatisticsView';
+import { PointageView } from './pages/PointageView';
 
 const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
   const dashboardData = useDashboardData(user); // explicitly pass user
@@ -32,14 +33,12 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
             chartData={dashboardData.chartData} 
           />
         )}
+        {activeView === 'pointage' && (
+          <PointageView user={user} />
+        )}
         {activeView === 'rapport' && (
           <MonthlyReportView 
             {...dashboardData} 
-          />
-        )}
-        {activeView === 'database' && (
-          <DatabaseView 
-            {...dashboardData}
           />
         )}
         {activeView === 'statistics' && (
