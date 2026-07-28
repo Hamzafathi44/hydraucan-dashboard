@@ -25,7 +25,13 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
-      
+      {
+  id: 'srm-excel',
+  label: 'Import Excel SRM',
+  // يمكنك استخدام أي أيقونة من lucide-react مثل FileSpreadsheet أو Upload
+  icon: FileSpreadsheet 
+}
+
       {/* Sidebar */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="flex items-center justify-between px-2 mb-4">
