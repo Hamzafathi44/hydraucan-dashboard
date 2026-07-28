@@ -6,7 +6,7 @@ export const SRMExcelImporter = () => {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  // Helper to extract fields flexibly
+  // Flexible field finder
   const getFieldValue = (row, possibleNames) => {
     const keys = Object.keys(row);
     for (const name of possibleNames) {
@@ -18,40 +18,44 @@ export const SRMExcelImporter = () => {
     return '';
   };
 
-  // Helper to format dates correctly without timezone shift
+  // Strictly parses dates as DD/MM/YYYY
   const formatDateValue = (rawDate) => {
     if (!rawDate) return '';
-    
-    // If Excel gave a JS Date object
-    if (rawDate instanceof Date) {
-      const day = String(rawDate.getDate()).padStart(2, '0');
-      const month = String(rawDate.getMonth() + 1).padStart(2, '0');
-      const year = rawDate.getFullYear();
-      return `${year}-${month}-${day}`;
-    }
 
-    // If it's a string like "1/5/2026" or "01/05/2026"
     const str = String(rawDate).trim();
-    if (str.includes('/')) {
-      const parts = str.split('/');
+
+    // If string contains slash or dash (e.g. "01/05/2026" or "1-5-2026")
+    if (str.includes('/') || str.includes('-')) {
+      const separator = str.includes('/') ? '/' : '-';
+      const parts = str.split(separator);
+
       if (parts.length === 3) {
-        let [d, m, y] = parts;
-        if (y.length === 2) y = `20${y}`;
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        let [day, month, year] = parts;
+        
+        // Handle short year formats like "26" -> "2026"
+        if (year.length === 2) year = `20${year}`;
+        
+        // Pad day and month with leading zeros
+        day = day.padStart(2, '0');
+        month = month.padStart(2, '0');
+
+        // Returns YYYY-MM-DD so srmPdfGenerator can display it as DD/MM/YYYY
+        return `${year}-${month}-${day}`;
       }
     }
 
     return str;
   };
 
-  // Helper to sanitize accents for standard PDF Helvetica font
-  const sanitizeText = (text) => {
-    if (!text) return '';
-    return String(text)
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // Removes accents (É -> E, è -> e)
-      .toUpperCase()
-      .trim();
+  // Sanitizes accented characters so pdf-lib Helvetica standard font doesn't fail
+  const sanitizeObservation = (text) => {
+    if (!text) return 'FUITE';
+    let cleanStr = String(text).toUpperCase().trim();
+
+    // Replace accented É with standard E
+    cleanStr = cleanStr.replace(/É|È|Ê|Ë/g, 'E');
+
+    return cleanStr;
   };
 
   const handleFileUpload = async (e) => {
@@ -63,9 +67,9 @@ export const SRMExcelImporter = () => {
 
     try {
       const data = await file.arrayBuffer();
-      // Notice: raw date strings preserved to prevent timezone shift
+      // Keep cell dates disabled to prevent timezone auto-conversion
       const workbook = XLSX.read(data, { type: 'array', cellDates: false });
-      
+
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
         throw new Error("Excel file is empty.");
       }
@@ -81,7 +85,7 @@ export const SRMExcelImporter = () => {
         return;
       }
 
-      setStatusMessage(`2/4: Parsing ${rawRows.length} rows...`);
+      setStatusMessage(`2/4: Processing ${rawRows.length} items...`);
 
       const formattedItems = rawRows.map(row => {
         const rawDate = getFieldValue(row, ['Date', 'date', 'DATE']);
@@ -91,8 +95,7 @@ export const SRMExcelImporter = () => {
         const adresse = getFieldValue(row, ['Adresse', 'adresse', 'Lieu']);
         const rawObs = getFieldValue(row, ['Observation', 'observation', 'Type', 'Nature']);
         
-        // Sanitize observation text ("FUITE SPÉCIALE" becomes "FUITE SPECIALE")
-        const cleanObs = sanitizeText(rawObs) || 'FUITE';
+        const cleanObs = sanitizeObservation(rawObs);
 
         return {
           date: dateVal,
@@ -100,6 +103,7 @@ export const SRMExcelImporter = () => {
           adresse: String(adresse).trim(),
           type: cleanObs,
           nature: cleanObs,
+          type_autre: cleanObs.includes('SPECIAL'),
           material: '',
           x: '',
           y: ''
@@ -107,17 +111,17 @@ export const SRMExcelImporter = () => {
       }).filter(item => item.date || item.reference);
 
       if (formattedItems.length === 0) {
-        alert("Could not recognize data rows. Please ensure column headers exist: Date, N compteur");
+        alert("Could not recognize rows. Check that your Excel table has 'Date' and 'N compteur' headers.");
         setLoading(false);
         setStatusMessage('');
         return;
       }
 
-      setStatusMessage(`3/4: Generating PDF for (${formattedItems.length}) items...`);
+      setStatusMessage(`3/4: Generating PDF forms for ${formattedItems.length} items...`);
 
       const pdfBytes = await generateBulkSrmPdfBytes(formattedItems);
 
-      setStatusMessage('4/4: Downloading PDF...');
+      setStatusMessage('4/4: Downloading PDF file...');
 
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const link = document.createElement('a');
@@ -127,11 +131,11 @@ export const SRMExcelImporter = () => {
       link.click();
       document.body.removeChild(link);
 
-      setStatusMessage(`✅ Generated PDF for ${formattedItems.length} items successfully!`);
+      setStatusMessage(`✅ Successfully generated PDF for ${formattedItems.length} items!`);
     } catch (err) {
-      console.error("Build Error:", err);
-      alert(`Error generating PDF: ${err.message || 'Check SRM.pdf file in public'}`);
-      setStatusMessage('❌ Error occurred during processing.');
+      console.error("PDF Generation Error:", err);
+      alert(`Error generating PDF: ${err.message || 'Make sure public/SRM.pdf exists'}`);
+      setStatusMessage('❌ Error during processing.');
     } finally {
       setLoading(false);
     }
@@ -140,10 +144,10 @@ export const SRMExcelImporter = () => {
   return (
     <div className="p-6 border-2 border-dashed border-cyan-500/40 rounded-2xl bg-slate-900/80 text-center max-w-xl mx-auto my-6 shadow-xl backdrop-blur-md">
       <h3 className="text-xl font-bold text-cyan-400 mb-2">
-        SRM Excel Attachment Importer
+        SRM Excel Importer
       </h3>
       <p className="text-slate-300 text-sm mb-6">
-        Upload your Excel file to generate all filled SRM forms into a single PDF document.
+        Upload your Excel file to automatically generate filled SRM PDF forms.
       </p>
 
       <input 
@@ -154,7 +158,7 @@ export const SRMExcelImporter = () => {
         id="srm-excel-input"
         className="hidden"
       />
-      
+
       <label 
         htmlFor="srm-excel-input"
         className={`px-6 py-3.5 rounded-xl font-bold text-white transition-all duration-200 inline-block cursor-pointer shadow-lg ${
