@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { generateBulkSrmPdfBytes } from '../srmPdfGenerator';
 
 export const SRMExcelImporter = () => {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  // دالة لمطابقة أسماء الأعمدة بمرونة
+  // دالة لمطابقة عناوين الأعمدة بمرونة عالية
   const getFieldValue = (row, possibleNames) => {
     const keys = Object.keys(row);
     for (const name of possibleNames) {
@@ -16,50 +16,6 @@ export const SRMExcelImporter = () => {
       }
     }
     return '';
-  };
-
-  // رسم صفحة PDF واحدة
-  const generateSrmPdfForSingleItem = async (pdfDoc, itemData) => {
-    const page = pdfDoc.addPage([595.28, 841.89]);
-    const { width, height } = page.getSize();
-
-    page.drawRectangle({
-      x: 20,
-      y: 20,
-      width: width - 40,
-      height: height - 40,
-      borderWidth: 2,
-      borderColor: rgb(0.1, 0.17, 0.33),
-    });
-
-    page.drawText('ATTACHEMENT DE TRAVAUX - SRM', {
-      x: 130,
-      y: height - 60,
-      size: 16,
-      color: rgb(0.1, 0.17, 0.33),
-    });
-
-    const startY = height - 120;
-    const lineHeight = 35;
-
-    const fields = [
-      { label: 'Date:', value: itemData.date || '-' },
-      { label: 'N° Tournee / Ref:', value: itemData.reference || '-' },
-      { label: 'Adresse / Lieu:', value: itemData.adresse || '-' },
-      { label: 'Nature du terrain:', value: itemData.material || '-' },
-      { label: 'Type d intervention:', value: itemData.type || 'Fuite' },
-      { label: 'Coordonnees X:', value: itemData.x || '-' },
-      { label: 'Coordonnees Y:', value: itemData.y || '-' },
-    ];
-
-    fields.forEach((field, index) => {
-      page.drawText(`${field.label} ${String(field.value)}`, {
-        x: 50,
-        y: startY - index * lineHeight,
-        size: 12,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-    });
   };
 
   const handleFileUpload = async (e) => {
@@ -74,32 +30,33 @@ export const SRMExcelImporter = () => {
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-        throw new Error("ملف الإكسل فارغ أو غير صالح.");
+        throw new Error("ملف الإكسل فارغ.");
       }
 
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-
       const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
       if (!rawRows || rawRows.length === 0) {
-        alert("لم يتم العثور على أسطر بيانات داخل الشيت الأول من الملف.");
+        alert("لم يتم العثور على أسطر بيانات داخل الشيت الأول.");
         setLoading(false);
         setStatusMessage('');
         return;
       }
 
-      setStatusMessage(`2/4: قراءة (${rawRows.length}) سطر من الجدول...`);
+      setStatusMessage(`2/4: تحليل البيانات المخرجة (${rawRows.length} سطر)...`);
 
+      // استخراج الأعمدة وتوافقها مع نظام SRM
       const formattedItems = rawRows.map(row => {
         let dateVal = getFieldValue(row, ['Date', 'date', 'DATE']);
         if (dateVal instanceof Date) {
           dateVal = dateVal.toISOString().split('T')[0];
         }
 
-        const tournee = getFieldValue(row, ['Tournée', 'tournée', 'Tournee', 'tournee', 'N° Tournée', 'Ref', 'Reference', 'ID']);
+        const tournee = getFieldValue(row, ['Tournée', 'tournée', 'Tournee', 'tournee', 'N° Tournée', 'Ref', 'Reference', 'N°', 'ID']);
         const adresse = getFieldValue(row, ['Adresse', 'adresse', 'Lieu', 'Localisation']);
-        const natureTerrain = getFieldValue(row, ['Nature terrain', 'nature terrain', 'Nature Terrain', 'Terrain', 'Material']);
+        const natureTerrain = getFieldValue(row, ['Nature terrain', 'nature terrain', 'Nature Terrain', 'Terrain', 'Material', 'Matériau']);
+        const typeVal = getFieldValue(row, ['Type', 'type', 'Nature', 'nature']) || 'Fuite';
         const xVal = getFieldValue(row, ['X', 'x', 'Coord X', 'Longitude']);
         const yVal = getFieldValue(row, ['Y', 'y', 'Coord Y', 'Latitude']);
 
@@ -108,32 +65,27 @@ export const SRMExcelImporter = () => {
           reference: String(tournee).trim(),
           adresse: String(adresse).trim(),
           material: String(natureTerrain).trim(),
-          type: 'Fuite',
+          type: String(typeVal).trim(),
           x: String(xVal).trim(),
           y: String(yVal).trim()
         };
       }).filter(item => item.date || item.reference || item.adresse);
 
       if (formattedItems.length === 0) {
-        alert("تعذر التعرف على أعمدة التاريخ أو النمرة أو العنوان. تأكد من أن السطر الأول بالملف يحتوي على أسماء الأعمدة.");
+        alert("لم يتم التعرف على الأعمدة. تأكد من أن السطر الأول بالجدول يحتوي على العناوين مثل: Date, Tournée, Adresse, X, Y");
         setLoading(false);
         setStatusMessage('');
         return;
       }
 
-      setStatusMessage(`3/4: جاري توليد الـ PDF لعدد (${formattedItems.length}) عنصر...`);
+      setStatusMessage(`3/4: جاري تعبئة ملف SRM.pdf الأصلي لـ (${formattedItems.length}) عنصر...`);
 
-      const pdfDoc = await PDFDocument.create();
+      // 💥 استدعاء الدالة الخاصة بك لتعبئة SRM.pdf الأصلي
+      const pdfBytes = await generateBulkSrmPdfBytes(formattedItems);
 
-      for (const item of formattedItems) {
-        await generateSrmPdfForSingleItem(pdfDoc, item);
-      }
+      setStatusMessage('4/4: جاري التنزيل إلى الهاتف...');
 
-      const pdfBytes = await pdfDoc.save();
-
-      setStatusMessage('4/4: جاري تجهيز الملف للتنزيل...');
-
-      // طريقة تنزيل متوافقة مع متصفحات الهاتف
+      // تحميل الـ PDF المجمع فوراً
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
@@ -142,11 +94,11 @@ export const SRMExcelImporter = () => {
       link.click();
       document.body.removeChild(link);
 
-      setStatusMessage('✅ تم إنشاء وتحميل الملف بنجاح!');
+      setStatusMessage('✅ تم إنشاء وتحميل التقرير المجمع بنجاح!');
     } catch (err) {
-      console.error("خطأ أثناء التنفيذ:", err);
-      alert(`حدث خطأ: ${err.message || 'فشل في قراءة الملف'}`);
-      setStatusMessage('❌ حدث خطأ أثناء المعالجة.');
+      console.error("خطأ التوليد:", err);
+      alert(`حدث خطأ أثناء التعبئة: ${err.message || 'تأكد من وجود SRM.pdf في ملف public'}`);
+      setStatusMessage('❌ حدث خطأ أثناء العملية.');
     } finally {
       setLoading(false);
     }
@@ -158,7 +110,7 @@ export const SRMExcelImporter = () => {
         تعبئة سريعة من جدول الاتاشمان (Excel)
       </h3>
       <p className="text-slate-300 text-sm mb-6">
-        قم برفع ملف Excel لتوليد نماذج الـ SRM تلقائياً.
+        رفع جدول Excel وسيتم ملء قالب <b>SRM.pdf</b> المعتمد لكل التدخلات في ملف واحد.
       </p>
 
       <input 
@@ -176,7 +128,7 @@ export const SRMExcelImporter = () => {
           loading ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95'
         }`}
       >
-        {loading ? 'جاري التوليد...' : 'رفع جدول Excel وتوليد الـ PDF'}
+        {loading ? 'جاري المعالجة...' : 'رفع جدول Excel وتوليد الـ PDF المجمع'}
       </label>
 
       {statusMessage && (
