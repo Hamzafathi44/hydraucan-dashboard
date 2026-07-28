@@ -14,14 +14,17 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 // View Pages
 import { DashboardHome } from './pages/DashboardHome';
 import { MonthlyReportView } from './pages/MonthlyReportView';
-import { DatabaseView } from './pages/DatabaseView'; // Keep removed or re-add? User only asked for Fichier Exploitation EAU back
+import { DatabaseView } from './pages/DatabaseView';
 import { SettingsView } from './pages/SettingsView';
 import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
 import { StatisticsView } from './pages/StatisticsView';
 import { PointageView } from './pages/PointageView';
 
+// 1. استيراد المكون الجديد
+import SRMExcelImporter from './components/SRMExcelImporter';
+
 const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
-  const dashboardData = useDashboardData(user); // explicitly pass user
+  const dashboardData = useDashboardData(user);
 
   return (
     <DashboardLayout activeView={activeView} setActiveView={setActiveView}>
@@ -46,6 +49,12 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
         )}
         {activeView === 'fichier' && (
           <FichierExploitationEauView user={user} {...dashboardData} />
+        )}
+        {/* 2. إضافة الواجهة الجديدة هنا */}
+        {activeView === 'srm-excel' && (
+          <div className="p-6">
+            <SRMExcelImporter />
+          </div>
         )}
         {activeView === 'settings' && (
           <SettingsView 
