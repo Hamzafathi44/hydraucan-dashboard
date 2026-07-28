@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 // تنبيه: تأكد من ضبط المسار أدناه حسب موقع ملف دالة الـ PDF في مشروعك
-import { generateBulkSrmPdfBytes } from '../srmPdfService'; 
+import { generateBulkSrmPdfBytes } from './srmPdfService';
+
 
 export const SRMExcelImporter = () => {
   const [loading, setLoading] = useState(false);
