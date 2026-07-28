@@ -1,12 +1,56 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-// تنبيه: تأكد من ضبط المسار أدناه حسب موقع ملف دالة الـ PDF في مشروعك
-import { generateBulkSrmPdfBytes } from './srmPdfService';
-
+import { PDFDocument, rgb } from 'pdf-lib';
 
 export const SRMExcelImporter = () => {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+
+  // دالة إنشاء PDF لكل عنصر
+  const generateSrmPdfForSingleItem = async (pdfDoc, itemData) => {
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4 Size
+    const { width, height } = page.getSize();
+
+    // رسم الإطار والعنوان الرئيسي
+    page.drawRectangle({
+      x: 20,
+      y: 20,
+      width: width - 40,
+      height: height - 40,
+      borderWidth: 2,
+      borderColor: rgb(0.1, 0.17, 0.33),
+    });
+
+    page.drawText('ATTACHEMENT DE TRAVAUX - SRM', {
+      x: 150,
+      y: height - 60,
+      size: 18,
+      color: rgb(0.1, 0.17, 0.33),
+    });
+
+    // إضافة البيانات الأساسية داخل الصفحة
+    const startY = height - 120;
+    const lineHeight = 30;
+
+    const fields = [
+      { label: 'Date:', value: itemData.date || '-' },
+      { label: 'N° Tournee / Ref:', value: itemData.reference || '-' },
+      { label: 'Adresse:', value: itemData.adresse || '-' },
+      { label: 'Nature du terrain:', value: itemData.material || '-' },
+      { label: 'Type d intervention:', value: itemData.type || 'Fuite' },
+      { label: 'Coordonnees X:', value: itemData.x || '-' },
+      { label: 'Coordonnees Y:', value: itemData.y || '-' },
+    ];
+
+    fields.forEach((field, index) => {
+      page.drawText(`${field.label} ${field.value}`, {
+        x: 50,
+        y: startY - index * lineHeight,
+        size: 12,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+    });
+  };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -16,19 +60,16 @@ export const SRMExcelImporter = () => {
     setStatusMessage('جاري قراءة ملف Excel...');
 
     try {
-      // 1. قراءة الملف من الهاتف
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
 
-      // 2. تحويل أسطر الجدول إلى JSON
       const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
       setStatusMessage('جاري معالجة البيانات واستخراج التدخلات...');
 
-      // 3. تحويل بيانات جدول الاتاشمان
       const formattedItems = rawRows.map(row => {
         let dateVal = row['Date'] || row['date'] || '';
         if (dateVal instanceof Date) {
@@ -41,11 +82,10 @@ export const SRMExcelImporter = () => {
 
         return {
           date: String(dateVal).trim(),
-          reference: String(tournee).trim(),     // رقم المعرف / Tournée
+          reference: String(tournee).trim(),
           adresse: String(adresse).trim(),
-          material: String(natureTerrain).trim(), // طبيعة الأرض (Beton, Faience...)
+          material: String(natureTerrain).trim(),
           type: 'Fuite',
-          nature: 'Casse',
           x: String(row['X'] || row['x'] || '').trim(),
           y: String(row['Y'] || row['y'] || '').trim()
         };
@@ -60,15 +100,21 @@ export const SRMExcelImporter = () => {
 
       setStatusMessage(`جاري إنشاء PDF لـ (${formattedItems.length}) عنصر...`);
 
-      // 4. استدعاء دالة التجميع وتوليد الـ PDF
-      const pdfBytes = await generateBulkSrmPdfBytes(formattedItems);
+      // إنشاء مستند PDF مجمع جديد
+      const pdfDoc = await PDFDocument.create();
 
-      // 5. تحميل الملف تلقائياً على الهاتف
+      for (const item of formattedItems) {
+        await generateSrmPdfForSingleItem(pdfDoc, item);
+      }
+
+      const pdfBytes = await pdfDoc.save();
+
+      // تحميل الملف المجمع مباشرة على الهاتف
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Attachement_SRM_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.download = `Attachements_SRM_${new Date().toISOString().slice(0, 10)}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -77,7 +123,7 @@ export const SRMExcelImporter = () => {
       setStatusMessage('تم إكمال العملية وتحميل الملف بنجاح!');
     } catch (err) {
       console.error("خطأ في معالجة الملف:", err);
-      alert("حدث خطأ أثناء قراءة ملف الإكسل أو إنشاء PDF.");
+      alert("حدث خطأ أثناء قراءة ملف الإكسل أو إنشاء الـ PDF.");
       setStatusMessage('حدث خطأ أثناء العملية.');
     } finally {
       setLoading(false);
@@ -85,20 +131,12 @@ export const SRMExcelImporter = () => {
   };
 
   return (
-    <div style={{
-      margin: '20px 0',
-      padding: '24px',
-      border: '2px dashed #007bff',
-      borderRadius: '12px',
-      backgroundColor: '#f8f9fa',
-      textAlign: 'center',
-      direction: 'rtl'
-    }}>
-      <h3 style={{ margin: '0 0 10px 0', color: '#1A2B56', fontWeight: 'bold' }}>
+    <div className="p-6 border-2 border-dashed border-cyan-500/40 rounded-2xl bg-slate-900/60 text-center max-w-xl mx-auto my-8 shadow-xl backdrop-blur-md">
+      <h3 className="text-xl font-bold text-cyan-400 mb-2">
         تعبئة سريعة من جدول الاتاشمان (Excel)
       </h3>
-      <p style={{ color: '#666', fontSize: '14px', marginBottom: '18px' }}>
-        اختر ملف الإكسل وسيتم إنشاء جميع نماذج SRM في ملف PDF واحد مجمع.
+      <p className="text-slate-300 text-sm mb-6">
+        اختر ملف الإكسل وسيقوم النظام بتوليد نماذج الـ SRM المجمعة في ملف PDF واحد مباشرة.
       </p>
 
       <input 
@@ -107,27 +145,20 @@ export const SRMExcelImporter = () => {
         onChange={handleFileUpload} 
         disabled={loading}
         id="srm-excel-input"
-        style={{ display: 'none' }}
+        className="hidden"
       />
       
       <label 
         htmlFor="srm-excel-input"
-        style={{
-          padding: '12px 24px',
-          backgroundColor: loading ? '#6c757d' : '#28a745',
-          color: 'white',
-          borderRadius: '8px',
-          fontWeight: 'bold',
-          display: 'inline-block',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-        }}
+        className={`px-6 py-3.5 rounded-xl font-bold text-white transition-all duration-200 inline-block cursor-pointer shadow-lg ${
+          loading ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95'
+        }`}
       >
         {loading ? 'جاري المعالجة...' : 'رفع جدول Excel وتوليد الـ PDF'}
       </label>
 
       {statusMessage && (
-        <p style={{ marginTop: '14px', fontSize: '14px', color: '#007bff', fontWeight: '500' }}>
+        <p className="mt-4 text-sm font-semibold text-cyan-300 animate-pulse">
           {statusMessage}
         </p>
       )}
