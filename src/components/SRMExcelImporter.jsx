@@ -6,7 +6,6 @@ export const SRMExcelImporter = () => {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  // Flexible field finder
   const getFieldValue = (row, possibleNames) => {
     const keys = Object.keys(row);
     for (const name of possibleNames) {
@@ -18,44 +17,37 @@ export const SRMExcelImporter = () => {
     return '';
   };
 
-  // Strictly parses dates as DD/MM/YYYY
-  const formatDateValue = (rawDate) => {
+  // Explicitly forces DD/MM/YYYY dates into YYYY-MM-DD so srmPdfGenerator converts it back to exact DD/MM/YYYY
+  const parseToIsoDate = (rawDate) => {
     if (!rawDate) return '';
-
     const str = String(rawDate).trim();
 
-    // If string contains slash or dash (e.g. "01/05/2026" or "1-5-2026")
     if (str.includes('/') || str.includes('-')) {
-      const separator = str.includes('/') ? '/' : '-';
-      const parts = str.split(separator);
-
+      const sep = str.includes('/') ? '/' : '-';
+      const parts = str.split(sep);
       if (parts.length === 3) {
         let [day, month, year] = parts;
-        
-        // Handle short year formats like "26" -> "2026"
         if (year.length === 2) year = `20${year}`;
         
-        // Pad day and month with leading zeros
+        // Pad numbers to ensure 2 digits
         day = day.padStart(2, '0');
         month = month.padStart(2, '0');
 
-        // Returns YYYY-MM-DD so srmPdfGenerator can display it as DD/MM/YYYY
         return `${year}-${month}-${day}`;
       }
     }
-
     return str;
   };
 
-  // Sanitizes accented characters so pdf-lib Helvetica standard font doesn't fail
-  const sanitizeObservation = (text) => {
+  // Replaces accents and formats observation text so Helvetica doesn't fail
+  const formatObservation = (text) => {
     if (!text) return 'FUITE';
-    let cleanStr = String(text).toUpperCase().trim();
+    let clean = String(text).toUpperCase().trim();
+    
+    // Replace É, È, etc. with E for pdf-lib compatibility
+    clean = clean.replace(/É|È|Ê|Ë/g, 'E');
 
-    // Replace accented É with standard E
-    cleanStr = cleanStr.replace(/É|È|Ê|Ë/g, 'E');
-
-    return cleanStr;
+    return clean;
   };
 
   const handleFileUpload = async (e) => {
@@ -67,7 +59,7 @@ export const SRMExcelImporter = () => {
 
     try {
       const data = await file.arrayBuffer();
-      // Keep cell dates disabled to prevent timezone auto-conversion
+      // Keep raw strings to prevent JS timezone adjustments
       const workbook = XLSX.read(data, { type: 'array', cellDates: false });
 
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -89,21 +81,21 @@ export const SRMExcelImporter = () => {
 
       const formattedItems = rawRows.map(row => {
         const rawDate = getFieldValue(row, ['Date', 'date', 'DATE']);
-        const dateVal = formatDateValue(rawDate);
+        const dateIso = parseToIsoDate(rawDate);
 
         const nCompteur = getFieldValue(row, ['N compteur', 'N° compteur', 'Ncompteur', 'Compteur', 'Ref', 'Tournee']);
         const adresse = getFieldValue(row, ['Adresse', 'adresse', 'Lieu']);
         const rawObs = getFieldValue(row, ['Observation', 'observation', 'Type', 'Nature']);
         
-        const cleanObs = sanitizeObservation(rawObs);
+        const cleanObs = formatObservation(rawObs);
 
         return {
-          date: dateVal,
+          date: dateIso,
           reference: String(nCompteur).trim(),
           adresse: String(adresse).trim(),
           type: cleanObs,
-          nature: cleanObs,
-          type_autre: cleanObs.includes('SPECIAL'),
+          obs1: cleanObs, // Overrides mapItemToSrmForm observation directly
+          obs2: '',
           material: '',
           x: '',
           y: ''
@@ -111,7 +103,7 @@ export const SRMExcelImporter = () => {
       }).filter(item => item.date || item.reference);
 
       if (formattedItems.length === 0) {
-        alert("Could not recognize rows. Check that your Excel table has 'Date' and 'N compteur' headers.");
+        alert("Could not recognize rows. Ensure 'Date' and 'N compteur' headers are present.");
         setLoading(false);
         setStatusMessage('');
         return;
