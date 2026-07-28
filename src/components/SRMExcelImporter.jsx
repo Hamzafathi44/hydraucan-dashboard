@@ -6,12 +6,12 @@ export const SRMExcelImporter = () => {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  // دالة لمطابقة عناوين الأعمدة بمرونة عالية
+  // دالة البحث عن العناوين بمرونة عالية
   const getFieldValue = (row, possibleNames) => {
     const keys = Object.keys(row);
     for (const name of possibleNames) {
       const foundKey = keys.find(k => k.trim().toLowerCase() === name.trim().toLowerCase());
-      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') {
+      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && row[foundKey] !== '') {
         return row[foundKey];
       }
     }
@@ -38,54 +38,51 @@ export const SRMExcelImporter = () => {
       const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
       if (!rawRows || rawRows.length === 0) {
-        alert("لم يتم العثور على أسطر بيانات داخل الشيت الأول.");
+        alert("لم يتم العثور على أسطر بيانات داخل الشيت.");
         setLoading(false);
         setStatusMessage('');
         return;
       }
 
-      setStatusMessage(`2/4: تحليل البيانات المخرجة (${rawRows.length} سطر)...`);
+      setStatusMessage(`2/4: تحليل أسطر الجدول (${rawRows.length} سطر)...`);
 
-      // استخراج الأعمدة وتوافقها مع نظام SRM
+      // قراءة الأعمدة المطابقة تماماً لجدولك في الصورة
       const formattedItems = rawRows.map(row => {
         let dateVal = getFieldValue(row, ['Date', 'date', 'DATE']);
         if (dateVal instanceof Date) {
           dateVal = dateVal.toISOString().split('T')[0];
         }
 
-        const tournee = getFieldValue(row, ['Tournée', 'tournée', 'Tournee', 'tournee', 'N° Tournée', 'Ref', 'Reference', 'N°', 'ID']);
-        const adresse = getFieldValue(row, ['Adresse', 'adresse', 'Lieu', 'Localisation']);
-        const natureTerrain = getFieldValue(row, ['Nature terrain', 'nature terrain', 'Nature Terrain', 'Terrain', 'Material', 'Matériau']);
-        const typeVal = getFieldValue(row, ['Type', 'type', 'Nature', 'nature']) || 'Fuite';
-        const xVal = getFieldValue(row, ['X', 'x', 'Coord X', 'Longitude']);
-        const yVal = getFieldValue(row, ['Y', 'y', 'Coord Y', 'Latitude']);
+        const nCompteur = getFieldValue(row, ['N compteur', 'N° compteur', 'Ncompteur', 'Compteur', 'Ref', 'Tournee']);
+        const adresse = getFieldValue(row, ['Adresse', 'adresse', 'Lieu']);
+        const observation = getFieldValue(row, ['Observation', 'observation', 'Type', 'Nature']);
 
         return {
           date: String(dateVal).trim(),
-          reference: String(tournee).trim(),
+          reference: String(nCompteur).trim(),
           adresse: String(adresse).trim(),
-          material: String(natureTerrain).trim(),
-          type: String(typeVal).trim(),
-          x: String(xVal).trim(),
-          y: String(yVal).trim()
+          type: String(observation).trim() || 'FUITE',
+          material: '',
+          x: '',
+          y: ''
         };
-      }).filter(item => item.date || item.reference || item.adresse);
+      }).filter(item => item.date || item.reference); // يتطلب وجود تاريخ أو رقم compteur فقط
 
       if (formattedItems.length === 0) {
-        alert("لم يتم التعرف على الأعمدة. تأكد من أن السطر الأول بالجدول يحتوي على العناوين مثل: Date, Tournée, Adresse, X, Y");
+        alert("تعذر التعرف على بيانات الجدول! تأكد من وجود صف يحتوي على العناوين: Date, N compteur");
         setLoading(false);
         setStatusMessage('');
         return;
       }
 
-      setStatusMessage(`3/4: جاري تعبئة ملف SRM.pdf الأصلي لـ (${formattedItems.length}) عنصر...`);
+      setStatusMessage(`3/4: جاري تعبئة SRM.pdf لعدد (${formattedItems.length}) عنصر...`);
 
-      // 💥 استدعاء الدالة الخاصة بك لتعبئة SRM.pdf الأصلي
+      // استدعاء دالة التعبئة المجمعة
       const pdfBytes = await generateBulkSrmPdfBytes(formattedItems);
 
-      setStatusMessage('4/4: جاري التنزيل إلى الهاتف...');
+      setStatusMessage('4/4: جاري التحميل للهاتف...');
 
-      // تحميل الـ PDF المجمع فوراً
+      // تحميل الملف المجمع
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
@@ -94,11 +91,11 @@ export const SRMExcelImporter = () => {
       link.click();
       document.body.removeChild(link);
 
-      setStatusMessage('✅ تم إنشاء وتحميل التقرير المجمع بنجاح!');
+      setStatusMessage(`✅ تم إنشاء وتنزيل PDF مجمع لـ (${formattedItems.length}) عنصر بنجاح!`);
     } catch (err) {
-      console.error("خطأ التوليد:", err);
-      alert(`حدث خطأ أثناء التعبئة: ${err.message || 'تأكد من وجود SRM.pdf في ملف public'}`);
-      setStatusMessage('❌ حدث خطأ أثناء العملية.');
+      console.error("خطأ أثناء التنفيذ:", err);
+      alert(`حدث خطأ: ${err.message || 'فشل في معالجة الملف'}`);
+      setStatusMessage('❌ حدث خطأ أثناء المعالجة.');
     } finally {
       setLoading(false);
     }
@@ -110,7 +107,7 @@ export const SRMExcelImporter = () => {
         تعبئة سريعة من جدول الاتاشمان (Excel)
       </h3>
       <p className="text-slate-300 text-sm mb-6">
-        رفع جدول Excel وسيتم ملء قالب <b>SRM.pdf</b> المعتمد لكل التدخلات في ملف واحد.
+        قم برفع جدول Excel المحدث وسيتم تعبئة جميع نماذج الـ SRM المجمعة فوراً.
       </p>
 
       <input 
@@ -128,7 +125,7 @@ export const SRMExcelImporter = () => {
           loading ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95'
         }`}
       >
-        {loading ? 'جاري المعالجة...' : 'رفع جدول Excel وتوليد الـ PDF المجمع'}
+        {loading ? 'جاري التوليد...' : 'رفع جدول Excel وتوليد الـ PDF المجمع'}
       </label>
 
       {statusMessage && (
