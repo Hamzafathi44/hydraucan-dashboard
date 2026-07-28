@@ -6,6 +6,7 @@ export const SRMExcelImporter = () => {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
+  // Helper to retrieve fields dynamically
   const getFieldValue = (row, possibleNames) => {
     const keys = Object.keys(row);
     for (const name of possibleNames) {
@@ -17,36 +18,42 @@ export const SRMExcelImporter = () => {
     return '';
   };
 
-  // Explicitly forces DD/MM/YYYY dates into YYYY-MM-DD so srmPdfGenerator converts it back to exact DD/MM/YYYY
-  const parseToIsoDate = (rawDate) => {
+  // Handles Excel Date formatting cleanly to preserve exact DD/MM/YYYY
+  const parseDateToIso = (rawDate) => {
     if (!rawDate) return '';
     const str = String(rawDate).trim();
 
     if (str.includes('/') || str.includes('-')) {
       const sep = str.includes('/') ? '/' : '-';
       const parts = str.split(sep);
+      
       if (parts.length === 3) {
-        let [day, month, year] = parts;
-        if (year.length === 2) year = `20${year}`;
+        let [part1, part2, part3] = parts;
         
-        // Pad numbers to ensure 2 digits
-        day = day.padStart(2, '0');
-        month = month.padStart(2, '0');
+        // Ensure 4-digit year
+        if (part3.length === 2) part3 = `20${part3}`;
+        
+        // Pad days and months
+        part1 = part1.padStart(2, '0');
+        part2 = part2.padStart(2, '0');
 
-        return `${year}-${month}-${day}`;
+        // Check if raw input was already YYYY-MM-DD
+        if (part1.length === 4) {
+          return `${part1}-${part2}-${part3}`;
+        }
+
+        // If raw input was DD/MM/YYYY, convert to YYYY-MM-DD so srmPdfGenerator outputs DD/MM/YYYY
+        return `${part3}-${part2}-${part1}`;
       }
     }
     return str;
   };
 
-  // Replaces accents and formats observation text so Helvetica doesn't fail
+  // Sanitizes text for pdf-lib Helvetica font encoding
   const formatObservation = (text) => {
     if (!text) return 'FUITE';
     let clean = String(text).toUpperCase().trim();
-    
-    // Replace É, È, etc. with E for pdf-lib compatibility
     clean = clean.replace(/É|È|Ê|Ë/g, 'E');
-
     return clean;
   };
 
@@ -59,7 +66,7 @@ export const SRMExcelImporter = () => {
 
     try {
       const data = await file.arrayBuffer();
-      // Keep raw strings to prevent JS timezone adjustments
+      // Raw mode enabled to prevent Excel date auto-swapping
       const workbook = XLSX.read(data, { type: 'array', cellDates: false });
 
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -81,22 +88,26 @@ export const SRMExcelImporter = () => {
 
       const formattedItems = rawRows.map(row => {
         const rawDate = getFieldValue(row, ['Date', 'date', 'DATE']);
-        const dateIso = parseToIsoDate(rawDate);
+        const dateIso = parseDateToIso(rawDate);
 
         const nCompteur = getFieldValue(row, ['N compteur', 'N° compteur', 'Ncompteur', 'Compteur', 'Ref', 'Tournee']);
         const adresse = getFieldValue(row, ['Adresse', 'adresse', 'Lieu']);
         const rawObs = getFieldValue(row, ['Observation', 'observation', 'Type', 'Nature']);
         
         const cleanObs = formatObservation(rawObs);
+        const isFuiteSpeciale = cleanObs.includes('SPECIAL');
 
         return {
           date: dateIso,
           reference: String(nCompteur).trim(),
           adresse: String(adresse).trim(),
           type: cleanObs,
-          obs1: cleanObs, // Overrides mapItemToSrmForm observation directly
+          obs1: cleanObs,
           obs2: '',
-          material: '',
+          material: isFuiteSpeciale ? 'pvc' : '', // Sets PVC when observation is FUITE SPECIALE
+          mat_pvc: isFuiteSpeciale,               // Activates PVC checkbox
+          fuite_can: isFuiteSpeciale,              // Switches canalisation on for special leak
+          fuite_bra: !isFuiteSpeciale,             // Unchecks branchement when PVC special leak
           x: '',
           y: ''
         };
