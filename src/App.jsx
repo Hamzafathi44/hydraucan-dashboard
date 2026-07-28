@@ -20,7 +20,7 @@ import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
 import { StatisticsView } from './pages/StatisticsView';
 import { PointageView } from './pages/PointageView';
 
-// 1. استيراد المكون الجديد
+// استيراد مكون استيراد الإكسل الجديد
 import SRMExcelImporter from './components/SRMExcelImporter';
 
 const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
@@ -50,12 +50,14 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
         {activeView === 'fichier' && (
           <FichierExploitationEauView user={user} {...dashboardData} />
         )}
-        {/* 2. إضافة الواجهة الجديدة هنا */}
+        
+        {/* الصفحة المستقلة الجديدة لتعبئة الإكسل */}
         {activeView === 'srm-excel' && (
-          <div className="p-6">
+          <div className="p-4 md:p-6 max-w-4xl mx-auto">
             <SRMExcelImporter />
           </div>
         )}
+
         {activeView === 'settings' && (
           <SettingsView 
             typeOptions={dashboardData.typeOptions}
