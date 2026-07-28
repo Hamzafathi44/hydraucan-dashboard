@@ -18,34 +18,35 @@ export const SRMExcelImporter = () => {
     return '';
   };
 
-  // Handles Excel Date formatting cleanly to preserve exact DD/MM/YYYY
-  const parseDateToIso = (rawDate) => {
+  // Strictly formats dates as DD/MM/YYYY without hyphens so srmPdfGenerator leaves it untouched
+  const formatExactDate = (rawDate) => {
     if (!rawDate) return '';
     const str = String(rawDate).trim();
 
-    if (str.includes('/') || str.includes('-')) {
-      const sep = str.includes('/') ? '/' : '-';
-      const parts = str.split(sep);
-      
-      if (parts.length === 3) {
-        let [part1, part2, part3] = parts;
-        
-        // Ensure 4-digit year
-        if (part3.length === 2) part3 = `20${part3}`;
-        
-        // Pad days and months
-        part1 = part1.padStart(2, '0');
-        part2 = part2.padStart(2, '0');
+    // Replace hyphens with slashes
+    const normalized = str.replace(/-/g, '/');
+    const parts = normalized.split('/');
 
-        // Check if raw input was already YYYY-MM-DD
-        if (part1.length === 4) {
-          return `${part1}-${part2}-${part3}`;
-        }
+    if (parts.length === 3) {
+      let [p1, p2, p3] = parts;
 
-        // If raw input was DD/MM/YYYY, convert to YYYY-MM-DD so srmPdfGenerator outputs DD/MM/YYYY
-        return `${part3}-${part2}-${part1}`;
+      // Handle cases where year is first (YYYY/MM/DD)
+      if (p1.length === 4) {
+        const year = p1;
+        const month = p2.padStart(2, '0');
+        const day = p3.padStart(2, '0');
+        return `${day}/${month}/${year}`;
       }
+
+      // Handle standard DD/MM/YYYY or D/M/YYYY
+      let day = p1.padStart(2, '0');
+      let month = p2.padStart(2, '0');
+      let year = p3;
+      if (year.length === 2) year = `20${year}`;
+
+      return `${day}/${month}/${year}`;
     }
+
     return str;
   };
 
@@ -66,7 +67,7 @@ export const SRMExcelImporter = () => {
 
     try {
       const data = await file.arrayBuffer();
-      // Raw mode enabled to prevent Excel date auto-swapping
+      // Keep raw strings to prevent JS timezone adjustments
       const workbook = XLSX.read(data, { type: 'array', cellDates: false });
 
       if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -88,7 +89,7 @@ export const SRMExcelImporter = () => {
 
       const formattedItems = rawRows.map(row => {
         const rawDate = getFieldValue(row, ['Date', 'date', 'DATE']);
-        const dateIso = parseDateToIso(rawDate);
+        const exactDate = formatExactDate(rawDate);
 
         const nCompteur = getFieldValue(row, ['N compteur', 'N° compteur', 'Ncompteur', 'Compteur', 'Ref', 'Tournee']);
         const adresse = getFieldValue(row, ['Adresse', 'adresse', 'Lieu']);
@@ -98,16 +99,16 @@ export const SRMExcelImporter = () => {
         const isFuiteSpeciale = cleanObs.includes('SPECIAL');
 
         return {
-          date: dateIso,
+          date: exactDate,                        // Sent as DD/MM/YYYY directly
           reference: String(nCompteur).trim(),
           adresse: String(adresse).trim(),
           type: cleanObs,
           obs1: cleanObs,
           obs2: '',
-          material: isFuiteSpeciale ? 'pvc' : '', // Sets PVC when observation is FUITE SPECIALE
-          mat_pvc: isFuiteSpeciale,               // Activates PVC checkbox
-          fuite_can: isFuiteSpeciale,              // Switches canalisation on for special leak
-          fuite_bra: !isFuiteSpeciale,             // Unchecks branchement when PVC special leak
+          material: isFuiteSpeciale ? 'pvc' : '',  // Sets PVC material string
+          mat_pvc: isFuiteSpeciale,                // Checks PVC checkbox
+          fuite_can: isFuiteSpeciale,               // Checks Canalisation checkbox
+          fuite_bra: !isFuiteSpeciale,              // Unchecks Branchement checkbox for special leak
           x: '',
           y: ''
         };
