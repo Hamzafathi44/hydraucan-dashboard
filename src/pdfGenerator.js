@@ -36,19 +36,33 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
   doc.setFontSize(14);
   doc.text(title, 105, 25, { align: 'center' });
 
+  // ✅ 7 columns now — works for BOTH pages (Monthly Report + Refection)
   const bodyData = filteredList.map(item => [
-    item.date,
-    item.reference,
-    item.type,
-    item.material,
-    item.nature
+    item.date || '',
+    item.reference || '',
+    item.type || '',
+    item.material || item.materialUsed || '',
+    item.nature || item.terrainNature || '',
+    item.l || '',
+    item.L || ''
   ]);
 
   autoTable(doc, {
-    head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature"]],
+    head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature", "l", "L"]],
     body: bodyData,
     startY: 40,
     theme: 'grid',
+
+    // ✅ Green header (like your original example)
+    headStyles: {
+      fillColor: [60, 179, 143],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle'
+    },
+
+    // ✅ Merge DATE cells (unchanged from your original)
     didParseCell: function (data) {
       if (data.column.index === 0 && data.cell.section === 'body') {
         const rowIndex = data.row.index;
@@ -61,7 +75,19 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
         if (rowIndex > 0 && data.table.body[rowIndex - 1].cells[0].raw === currentDate) { data.cell.text = ['']; }
       }
     },
-    styles: { valign: 'middle', halign: 'center', fontSize: 10 }
+
+    // ✅ Column widths tuned for 7 columns
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 60 },
+      4: { cellWidth: 22 },
+      5: { cellWidth: 12 },
+      6: { cellWidth: 12 }
+    },
+
+    styles: { valign: 'middle', halign: 'center', fontSize: 9, cellPadding: 2 }
   });
 
   doc.save(`${title}.pdf`);
