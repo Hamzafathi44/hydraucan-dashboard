@@ -19,6 +19,7 @@ import { SettingsView } from './pages/SettingsView';
 import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
 import { StatisticsView } from './pages/StatisticsView';
 import { PointageView } from './pages/PointageView';
+import { RefectionView } from './pages/RefectionView';   // ✅ NEW
 
 // استيراد مكون استيراد الإكسل الجديد
 import SRMExcelImporter from './components/SRMExcelImporter';
@@ -43,6 +44,9 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
           <MonthlyReportView 
             {...dashboardData} 
           />
+        )}
+        {activeView === 'refection' && (                      /* ✅ NEW */
+          <RefectionView />
         )}
         {activeView === 'statistics' && (
           <StatisticsView dataList={dashboardData.dataList} />
