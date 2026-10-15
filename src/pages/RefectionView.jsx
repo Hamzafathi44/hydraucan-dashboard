@@ -42,22 +42,34 @@ export const RefectionView = () => {
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
         <div className="flex items-center gap-2 mb-5">
           <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-            <Wrench className="Classw-4 h-4 text-cyan-400" />
+            <Wrench className="w-4 h-4 text-cyan-400" />
           </div>
           <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
             New Entry — Refection
           </h3>
-        </}div>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols />
--2 lg:grid-cols-3 gap-4         ">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className={labelClass}> </Date</label>
-            <input namediv="date" type="date" value={formData.date} onChange={handleChange} className={input>
+            <label className={labelClass}>Date</label>
+            <input
+              name="date"
+              type="date"
+              value={formData.date}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </div>
 
           <div>
             <label className={labelClass}>Reference</label>
-            <input name="reference" value={formData.reference} onChange={handleChange} placeholder="e.g. PLA-089/26" className={inputClass} />
+            <input
+              name="reference"
+              value={formData.reference}
+              onChange={handleChange}
+              placeholder="e.g. PLA-089/26"
+              className={inputClass}
+            />
           </div>
 
           <div>
@@ -71,7 +83,13 @@ export const RefectionView = () => {
 
           <div className="md:col-span-2 lg:col-span-3">
             <label className={labelClass}>Material Used</label>
-            <input name="materialUsed" value={formData.materialUsed} onChange={handleChange} placeholder="e.g. [Porcelain tile 60x60 (15m²) + Adhesive 25kg (3u)]" className={inputClass} />
+            <input
+              name="materialUsed"
+              value={formData.materialUsed}
+              onChange={handleChange}
+              placeholder="e.g. [Porcelain tile 60x60 (15m²) + Adhesive 25kg (3u)]"
+              className={inputClass}
+            />
           </div>
 
           <div>
@@ -96,12 +114,28 @@ export const RefectionView = () => {
 
           <div>
             <label className={labelClass}>l (Width) — m</label>
-            <input name="l" type="number" step="0.01" value={formData.l} onChange={handleChange} placeholder="e.g. 0.60" className={inputClass} />
+            <input
+              name="l"
+              type="number"
+              step="0.01"
+              value={formData.l}
+              onChange={handleChange}
+              placeholder="e.g. 0.60"
+              className={inputClass}
+            />
           </div>
 
           <div>
             <label className={labelClass}>L (Length) — m</label>
-            <input name="L" type="number" step="0.01" value={formData.L} onChange={handleChange} placeholder="e.g. 15.00" className={inputClass} />
+            <input
+              name="L"
+              type="number"
+              step="0.01"
+              value={formData.L}
+              onChange={handleChange}
+              placeholder="e.g. 15.00"
+              className={inputClass}
+            />
           </div>
 
           <div>
