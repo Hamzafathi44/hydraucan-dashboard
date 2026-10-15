@@ -1,25 +1,42 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { generateReportPDF } from '../pdfGenerator';
 import { useRefections } from '../hooks/useRefections';
-import { Wrench, FileDown, Save, Trash2, Loader2 } from 'lucide-react';
+import { Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const RefectionView = () => {
   const { refections, loading, addRefection, deleteRefection } = useRefections();
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState({
     date: '',
     reference: '',
     type: 'Refection',
     materialUsed: '',
-    terrainNature: '',
-    l: '',
-    L: ''
+    terrainNature: ''
   });
+
+  // Multiple measurements: [{ l: '', L: '' }, ...]
+  const [measurements, setMeasurements] = useState([{ l: '', L: '' }]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleMeasurementChange = (index, field, value) => {
+    const updated = [...measurements];
+    updated[index][field] = value;
+    setMeasurements(updated);
+  };
+
+  const addMeasurement = () => {
+    setMeasurements([...measurements, { l: '', L: '' }]);
+  };
+
+  const removeMeasurement = (index) => {
+    if (measurements.length === 1) return;
+    setMeasurements(measurements.filter((_, i) => i !== index));
   };
 
   const resetForm = () => {
@@ -28,10 +45,9 @@ export const RefectionView = () => {
       reference: '',
       type: 'Refection',
       materialUsed: '',
-      terrainNature: '',
-      l: '',
-      L: ''
+      terrainNature: ''
     });
+    setMeasurements([{ l: '', L: '' }]);
   };
 
   const handleSave = async () => {
@@ -39,8 +55,22 @@ export const RefectionView = () => {
       toast.error('Please fill in the date and reference');
       return;
     }
+
+    // Keep only measurements that have both l and L
+    const cleanMeasurements = measurements.filter(
+      (m) => m.l !== '' && m.L !== ''
+    );
+
+    if (cleanMeasurements.length === 0) {
+      toast.error('Please add at least one measurement (l and L)');
+      return;
+    }
+
     setSaving(true);
-    const result = await addRefection(formData);
+    const result = await addRefection({
+      ...formData,
+      measurements: cleanMeasurements
+    });
     setSaving(false);
     if (result.success) {
       toast.success('Entry saved');
@@ -57,14 +87,38 @@ export const RefectionView = () => {
     else toast.error('Failed to delete');
   };
 
+  const handleSingleDownload = (entry) => {
+    const month = entry.date ? entry.date.slice(0, 7) : 'Tous';
+    generateReportPDF([entry], month);
+  };
+
   const handleGeneratePDF = () => {
-    if (refections.length === 0) {
+    if (filtered.length === 0) {
       toast.error('No entries to export');
       return;
     }
-    const month = refections[0]?.date?.slice(0, 7) || 'Tous';
-    generateReportPDF(refections, month);
+    const month = filtered[0]?.date?.slice(0, 7) || 'Tous';
+    generateReportPDF(filtered, month);
   };
+
+  // Search filter (works with new measurements array)
+  const filtered = useMemo(() => {
+    if (!search.trim()) return refections;
+    const q = search.toLowerCase();
+    return refections.filter((r) => {
+      const measurementsText = (r.measurements || [])
+        .map((m) => `${m.l} ${m.L}`)
+        .join(' ');
+      return (
+        (r.date || '').toLowerCase().includes(q) ||
+        (r.reference || '').toLowerCase().includes(q) ||
+        (r.type || '').toLowerCase().includes(q) ||
+        (r.materialUsed || '').toLowerCase().includes(q) ||
+        (r.terrainNature || '').toLowerCase().includes(q) ||
+        measurementsText.toLowerCase().includes(q)
+      );
+    });
+  }, [refections, search]);
 
   const inputClass =
     "w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition";
@@ -135,25 +189,71 @@ export const RefectionView = () => {
               <option value="Faience">Faience</option>
             </select>
           </div>
+        </div>
 
-          <div>
-            <label className={labelClass}>l (Width) — m</label>
-            <input name="l" type="number" step="0.01" value={formData.l} onChange={handleChange} placeholder="e.g. 0.60" className={inputClass} />
+        {/* MEASUREMENTS */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <label className={labelClass}>Measurements (l × L)</label>
+            <button
+              type="button"
+              onClick={addMeasurement}
+              className="flex items-center gap-1.5 text-xs font-bold text-cyan-300 hover:text-cyan-200 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 px-3 py-1.5 rounded-lg transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Measurement
+            </button>
           </div>
 
-          <div>
-            <label className={labelClass}>L (Length) — m</label>
-            <input name="L" type="number" step="0.01" value={formData.L} onChange={handleChange} placeholder="e.g. 15.00" className={inputClass} />
-          </div>
-
-          <div>
-            <label className={labelClass}>Area (m²) — auto</label>
-            <input
-              readOnly
-              value={formData.l && formData.L ? (parseFloat(formData.l) * parseFloat(formData.L)).toFixed(2) : ''}
-              placeholder="—"
-              className={`${inputClass} bg-slate-950/60 text-cyan-400 font-semibold`}
-            />
+          <div className="space-y-2">
+            {measurements.map((m, idx) => {
+              const area =
+                m.l && m.L
+                  ? (parseFloat(m.l) * parseFloat(m.L)).toFixed(2)
+                  : '';
+              return (
+                <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={m.l}
+                      onChange={(e) => handleMeasurementChange(idx, 'l', e.target.value)}
+                      placeholder="l (m)"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={m.L}
+                      onChange={(e) => handleMeasurementChange(idx, 'L', e.target.value)}
+                      placeholder="L (m)"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      readOnly
+                      value={area}
+                      placeholder="Area (m²)"
+                      className={`${inputClass} bg-slate-950/60 text-cyan-400 font-semibold`}
+                    />
+                  </div>
+                  <div className="col-span-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => removeMeasurement(idx)}
+                      disabled={measurements.length === 1}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-2 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -171,31 +271,46 @@ export const RefectionView = () => {
 
       {/* TABLE CARD */}
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
               <FileDown className="w-4 h-4 text-cyan-400" />
             </div>
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Saved Entries ({refections.length})
+              Saved Entries ({filtered.length}{search && ` / ${refections.length}`})
             </h3>
           </div>
 
-          <button
-            onClick={handleGeneratePDF}
-            className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-5 py-2 rounded-xl transition flex items-center gap-2"
-          >
-            <FileDown className="w-4 h-4" />
-            Generate PDF
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search entries..."
+                className="w-full sm:w-64 bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+              />
+            </div>
+
+            <button
+              onClick={handleGeneratePDF}
+              className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-5 py-2 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              <FileDown className="w-4 h-4" />
+              Generate PDF
+            </button>
+          </div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
           </div>
-        ) : refections.length === 0 ? (
-          <p className="text-center text-slate-500 py-10 text-sm">No entries yet</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-slate-500 py-10 text-sm">
+            {search ? 'No matching entries' : 'No entries yet'}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-slate-300">
@@ -209,32 +324,62 @@ export const RefectionView = () => {
                   <th className="text-center py-2 px-2">l</th>
                   <th className="text-center py-2 px-2">L</th>
                   <th className="text-center py-2 px-2">Area</th>
+                  <th className="text-center py-2 px-2">PDF</th>
                   <th className="text-center py-2 px-2"></th>
                 </tr>
               </thead>
               <tbody>
-                {refections.map((r) => (
-                  <tr key={r.id} className="border-b border-slate-800 hover:bg-white/5">
-                    <td className="py-2 px-2">{r.date}</td>
-                    <td className="py-2 px-2">{r.reference}</td>
-                    <td className="py-2 px-2">{r.type}</td>
-                    <td className="py-2 px-2 max-w-[220px] truncate">{r.materialUsed}</td>
-                    <td className="py-2 px-2">{r.terrainNature}</td>
-                    <td className="text-center py-2 px-2">{r.l}</td>
-                    <td className="text-center py-2 px-2">{r.L}</td>
-                    <td className="text-center py-2 px-2 text-cyan-400 font-semibold">
-                      {r.l && r.L ? (parseFloat(r.l) * parseFloat(r.L)).toFixed(2) : ''}
-                    </td>
-                    <td className="text-center py-2 px-2">
-                      <button
-                        onClick={() => handleDelete(r.id)}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-1.5 transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((r) => {
+                  const mList = r.measurements && r.measurements.length > 0
+                    ? r.measurements
+                    : [{ l: r.l || '', L: r.L || '' }]; // fallback for old entries
+
+                  return mList.map((m, i) => {
+                    const isFirst = i === 0;
+                    const area =
+                      m.l && m.L
+                        ? (parseFloat(m.l) * parseFloat(m.L)).toFixed(2)
+                        : '';
+                    return (
+                      <tr key={`${r.id}-${i}`} className="border-b border-slate-800 hover:bg-white/5">
+                        {isFirst && (
+                          <>
+                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.date}</td>
+                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.reference}</td>
+                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.type}</td>
+                            <td rowSpan={mList.length} className="py-2 px-2 align-top max-w-[220px] truncate">{r.materialUsed}</td>
+                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.terrainNature}</td>
+                          </>
+                        )}
+                        <td className="text-center py-2 px-2">{m.l}</td>
+                        <td className="text-center py-2 px-2">{m.L}</td>
+                        <td className="text-center py-2 px-2 text-cyan-400 font-semibold">{area}</td>
+                        {isFirst && (
+                          <>
+                            <td rowSpan={mList.length} className="text-center py-2 px-2 align-top">
+                              <button
+                                onClick={() => handleSingleDownload(r)}
+                                className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg p-1.5 transition"
+                                title="Download this entry as PDF"
+                              >
+                                <FileDown className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                            <td rowSpan={mList.length} className="text-center py-2 px-2 align-top">
+                              <button
+                                onClick={() => handleDelete(r.id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-1.5 transition"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  });
+                })}
               </tbody>
             </table>
           </div>
