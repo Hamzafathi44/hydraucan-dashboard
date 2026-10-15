@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import {
   collection,
@@ -15,7 +16,6 @@ export const useRefections = () => {
   const [refections, setRefections] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Live load all refections
   useEffect(() => {
     const q = query(collection(db, 'refections'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(
@@ -36,7 +36,6 @@ export const useRefections = () => {
     return () => unsubscribe();
   }, []);
 
-  // Add new refection
   const addRefection = async (data) => {
     try {
       await addDoc(collection(db, 'refections'), {
@@ -50,7 +49,6 @@ export const useRefections = () => {
     }
   };
 
-  // Delete a refection
   const deleteRefection = async (id) => {
     try {
       await deleteDoc(doc(db, 'refections', id));
