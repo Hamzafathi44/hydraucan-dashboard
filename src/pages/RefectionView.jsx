@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { generateReportPDF } from '../pdfGenerator';
-import { Wrench, FileDown } from 'lucide-react';
+import { useRefections } from '../hooks/useRefections';
+import { Wrench, FileDown, Save, Trash2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const RefectionView = () => {
+  const { refections, loading, addRefection, deleteRefection } = useRefections();
+  const [saving, setSaving] = useState(false);
+
   const [formData, setFormData] = useState({
     date: '',
     reference: '',
@@ -17,12 +22,48 @@ export const RefectionView = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = () => {
+  const resetForm = () => {
+    setFormData({
+      date: '',
+      reference: '',
+      type: 'Refection',
+      materialUsed: '',
+      terrainNature: '',
+      l: '',
+      L: ''
+    });
+  };
+
+  const handleSave = async () => {
     if (!formData.date || !formData.reference) {
-      alert('Please fill in the date and reference');
+      toast.error('Please fill in the date and reference');
       return;
     }
-    generateReportPDF([formData], formData.date.slice(0, 7));
+    setSaving(true);
+    const result = await addRefection(formData);
+    setSaving(false);
+    if (result.success) {
+      toast.success('Entry saved');
+      resetForm();
+    } else {
+      toast.error('Failed to save');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this entry?')) return;
+    const result = await deleteRefection(id);
+    if (result.success) toast.success('Deleted');
+    else toast.error('Failed to delete');
+  };
+
+  const handleGeneratePDF = () => {
+    if (refections.length === 0) {
+      toast.error('No entries to export');
+      return;
+    }
+    const month = refections[0]?.date?.slice(0, 7) || 'Tous';
+    generateReportPDF(refections, month);
   };
 
   const inputClass =
@@ -39,7 +80,8 @@ export const RefectionView = () => {
         </p>
       </div>
 
-      <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
+      {/* FORM CARD */}
+      <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl mb-6">
         <div className="flex items-center gap-2 mb-5">
           <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
             <Wrench className="w-4 h-4 text-cyan-400" />
@@ -52,24 +94,12 @@ export const RefectionView = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className={labelClass}>Date</label>
-            <input
-              name="date"
-              type="date"
-              value={formData.date}
-              onChange={handleChange}
-              className={inputClass}
-            />
+            <input name="date" type="date" value={formData.date} onChange={handleChange} className={inputClass} />
           </div>
 
           <div>
             <label className={labelClass}>Reference</label>
-            <input
-              name="reference"
-              value={formData.reference}
-              onChange={handleChange}
-              placeholder="e.g. PLA-089/26"
-              className={inputClass}
-            />
+            <input name="reference" value={formData.reference} onChange={handleChange} placeholder="e.g. PLA-089/26" className={inputClass} />
           </div>
 
           <div>
@@ -83,13 +113,7 @@ export const RefectionView = () => {
 
           <div className="md:col-span-2 lg:col-span-3">
             <label className={labelClass}>Material Used</label>
-            <input
-              name="materialUsed"
-              value={formData.materialUsed}
-              onChange={handleChange}
-              placeholder="e.g. [Porcelain tile 60x60 (15m²) + Adhesive 25kg (3u)]"
-              className={inputClass}
-            />
+            <input name="materialUsed" value={formData.materialUsed} onChange={handleChange} placeholder="e.g. [Porcelain tile 60x60 (15m²) + Adhesive 25kg (3u)]" className={inputClass} />
           </div>
 
           <div>
@@ -114,28 +138,12 @@ export const RefectionView = () => {
 
           <div>
             <label className={labelClass}>l (Width) — m</label>
-            <input
-              name="l"
-              type="number"
-              step="0.01"
-              value={formData.l}
-              onChange={handleChange}
-              placeholder="e.g. 0.60"
-              className={inputClass}
-            />
+            <input name="l" type="number" step="0.01" value={formData.l} onChange={handleChange} placeholder="e.g. 0.60" className={inputClass} />
           </div>
 
           <div>
             <label className={labelClass}>L (Length) — m</label>
-            <input
-              name="L"
-              type="number"
-              step="0.01"
-              value={formData.L}
-              onChange={handleChange}
-              placeholder="e.g. 15.00"
-              className={inputClass}
-            />
+            <input name="L" type="number" step="0.01" value={formData.L} onChange={handleChange} placeholder="e.g. 15.00" className={inputClass} />
           </div>
 
           <div>
@@ -151,13 +159,86 @@ export const RefectionView = () => {
 
         <div className="flex justify-end mt-6">
           <button
-            onClick={handleSubmit}
-            className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-6 py-2.5 rounded-xl transition flex items-center gap-2"
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-6 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Saving...' : 'Save Entry'}
+          </button>
+        </div>
+      </div>
+
+      {/* TABLE CARD */}
+      <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+              <FileDown className="w-4 h-4 text-cyan-400" />
+            </div>
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Saved Entries ({refections.length})
+            </h3>
+          </div>
+
+          <button
+            onClick={handleGeneratePDF}
+            className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-5 py-2 rounded-xl transition flex items-center gap-2"
           >
             <FileDown className="w-4 h-4" />
             Generate PDF
           </button>
         </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
+          </div>
+        ) : refections.length === 0 ? (
+          <p className="text-center text-slate-500 py-10 text-sm">No entries yet</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-slate-300">
+              <thead>
+                <tr className="border-b border-slate-700 text-slate-400 uppercase tracking-wider text-[10px]">
+                  <th className="text-left py-2 px-2">Date</th>
+                  <th className="text-left py-2 px-2">Ref</th>
+                  <th className="text-left py-2 px-2">Type</th>
+                  <th className="text-left py-2 px-2">Material</th>
+                  <th className="text-left py-2 px-2">Nature</th>
+                  <th className="text-center py-2 px-2">l</th>
+                  <th className="text-center py-2 px-2">L</th>
+                  <th className="text-center py-2 px-2">Area</th>
+                  <th className="text-center py-2 px-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {refections.map((r) => (
+                  <tr key={r.id} className="border-b border-slate-800 hover:bg-white/5">
+                    <td className="py-2 px-2">{r.date}</td>
+                    <td className="py-2 px-2">{r.reference}</td>
+                    <td className="py-2 px-2">{r.type}</td>
+                    <td className="py-2 px-2 max-w-[220px] truncate">{r.materialUsed}</td>
+                    <td className="py-2 px-2">{r.terrainNature}</td>
+                    <td className="text-center py-2 px-2">{r.l}</td>
+                    <td className="text-center py-2 px-2">{r.L}</td>
+                    <td className="text-center py-2 px-2 text-cyan-400 font-semibold">
+                      {r.l && r.L ? (parseFloat(r.l) * parseFloat(r.L)).toFixed(2) : ''}
+                    </td>
+                    <td className="text-center py-2 px-2">
+                      <button
+                        onClick={() => handleDelete(r.id)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-1.5 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );
