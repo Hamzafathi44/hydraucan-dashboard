@@ -1,111 +1,113 @@
-import { useState } from 'react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase';
-import { 
-  Menu, X, LayoutDashboard, FileText, Settings, LogOut, Droplets, PieChart, Clock, FileSpreadsheet 
-} from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { toast } from 'sonner';
 
-export const DashboardLayout = ({ children, activeView, setActiveView }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+const toBase64 = (url) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+};
 
-  return (
-    <div className="dashboard-layout relative" style={{ backgroundImage: "radial-gradient(circle at 50% 50%, #1A2B56 0%, #030303 100%)" }}>
-      {/* Mobile Menu Toggle */}
-      <button 
-        onClick={() => setIsMobileMenuOpen(true)}
-        className="lg:hidden fixed top-6 right-6 z-30 p-2.5 bg-slate-900/60 backdrop-blur-md border border-slate-700 shadow-sm text-cyan-400 rounded-xl"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+export const generateReportPDF = async (filteredList, selectedMonth) => {
+  const doc = new jsPDF();
+  const loadingToast = toast.loading("Génération du PDF...");
 
-      {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/40 z-40 backdrop-blur-sm lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+  try {
+    const logoData = await toBase64('/logo-hydracane.png');
+    doc.addImage(logoData, 'PNG', 15, 10, 45, 15);
+  } catch {
+    console.warn("Logo non trouvé");
+  }
 
-      {/* Sidebar */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="flex items-center justify-between px-2 mb-4">
-          <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="h-16 w-auto object-contain drop-shadow-md brightness-200" referrerPolicy="no-referrer" />
-          <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white bg-white/5 rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const title =
+    selectedMonth === 'Tous'
+      ? "Rapport Mensuel - Global"
+      : `Rapport Mensuel - ${selectedMonth}`;
 
-        <nav className="flex-1 space-y-2">
-          <button 
-            onClick={() => { setActiveView('home'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'home' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            TABLEAU DE BORD
-          </button>
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text(title, 105, 25, { align: 'center' });
 
-          <button 
-            onClick={() => { setActiveView('pointage'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'pointage' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <Clock className="w-5 h-5" />
-            POINTAGE
-          </button>
+  const bodyData = filteredList.map(item => [
+    item.date,
+    item.reference,
+    item.type,
+    item.material || item.materialUsed || '',
+    item.nature || item.terrainNature || '',
+    item.l || '',
+    item.L || ''
+  ]);
 
-          <button 
-            onClick={() => { setActiveView('rapport'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'rapport' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <FileText className="w-5 h-5" />
-            RAPPORT MENSUEL
-          </button>
+  autoTable(doc, {
+    head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature", "l", "L"]],
+    body: bodyData,
+    startY: 40,
+    theme: 'grid',
 
-          <button 
-            onClick={() => { setActiveView('statistics'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'statistics' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <PieChart className="w-5 h-5" />
-            Toutes les Statistiques
-          </button>
+    headStyles: {
+      fillColor: [60, 179, 143],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle'
+    },
 
-          <button 
-            onClick={() => { setActiveView('fichier'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'fichier' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <Droplets className="w-5 h-5" />
-            Fichier EXPLOITATION EAU
-          </button>
+    didParseCell: function (data) {
+      if (data.column.index === 0 && data.cell.section === 'body') {
+        const rowIndex = data.row.index;
+        const currentDate = data.cell.raw;
+        let rowSpan = 1;
 
-          {/* الزر الجديد لاستيراد Excel */}
-          <button 
-            onClick={() => { setActiveView('srm-excel'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'srm-excel' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-            IMPORT EXCEL SRM
-          </button>
+        for (let i = rowIndex + 1; i < data.table.body.length; i++) {
+          if (data.table.body[i].cells[0].raw === currentDate) {
+            rowSpan++;
+          } else {
+            break;
+          }
+        }
 
-          <button 
-            onClick={() => { setActiveView('settings'); setIsMobileMenuOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'settings' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-          >
-            <Settings className="w-5 h-5" />
-            Paramètres
-          </button>
-        </nav>
+        if (rowSpan > 1) {
+          data.cell.rowSpan = rowSpan;
+        }
 
-        <div className="pt-6 border-t border-line">
-          <button onClick={() => signOut(auth)} className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl font-bold text-sm transition-all">
-            <LogOut className="w-5 h-5" />
-            Déconnexion
-          </button>
-        </div>
-      </aside>
+        if (
+          rowIndex > 0 &&
+          data.table.body[rowIndex - 1].cells[0].raw === currentDate
+        ) {
+          data.cell.text = [''];
+        }
+      }
+    },
 
-      {/* Main Content */}
-      <main className="main-content">
-        {children}
-      </main>
-    </div>
-  );
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 60 },
+      4: { cellWidth: 22 },
+      5: { cellWidth: 12 },
+      6: { cellWidth: 12 }
+    },
+
+    styles: {
+      valign: 'middle',
+      halign: 'center',
+      fontSize: 9,
+      cellPadding: 2
+    }
+  });
+
+  doc.save(`${title}.pdf`);
+  toast.dismiss(loadingToast);
+  toast.success("PDF exporté avec succès");
 };
