@@ -2,7 +2,6 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 
-// Helper to convert images to Base64
 const toBase64 = (url) => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -19,6 +18,41 @@ const toBase64 = (url) => {
   });
 };
 
+const buildBody = (entries) => {
+  const body = [];
+  const merges = [];
+
+  entries.forEach((entry) => {
+    const mList =
+      entry.measurements && entry.measurements.length > 0
+        ? entry.measurements
+        : [{
+            l: entry.l || '',
+            L: entry.L || '',
+            nature: entry.nature || entry.terrainNature || ''
+          }];
+
+    const startRow = body.length;
+
+    mList.forEach((m, i) => {
+      const isFirst = i === 0;
+      body.push([
+        isFirst ? (entry.date || '') : '',
+        isFirst ? (entry.reference || '') : '',
+        isFirst ? (entry.type || '') : '',
+        isFirst ? (entry.material || entry.materialUsed || '') : '',
+        m.nature || '',
+        m.l || '',
+        m.L || ''
+      ]);
+    });
+
+    merges.push({ startRow, rowSpan: mList.length });
+  });
+
+  return { body, merges };
+};
+
 export const generateReportPDF = async (filteredList, selectedMonth) => {
   const doc = new jsPDF();
   const loadingToast = toast.loading("Génération du PDF...");
@@ -30,30 +64,23 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     console.warn("Logo non trouvé");
   }
 
-  const title = selectedMonth === 'Tous' ? "Rapport Mensuel - Global" : `Rapport Mensuel - ${selectedMonth}`;
+  const title =
+    selectedMonth === 'Tous'
+      ? "Rapport Mensuel - Global"
+      : `Rapport Mensuel - ${selectedMonth}`;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.text(title, 105, 25, { align: 'center' });
 
-  // ✅ 7 columns now — works for BOTH pages (Monthly Report + Refection)
-  const bodyData = filteredList.map(item => [
-    item.date || '',
-    item.reference || '',
-    item.type || '',
-    item.material || item.materialUsed || '',
-    item.nature || item.terrainNature || '',
-    item.l || '',
-    item.L || ''
-  ]);
+  const { body, merges } = buildBody(filteredList);
 
   autoTable(doc, {
     head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature", "l", "L"]],
-    body: bodyData,
+    body: body,
     startY: 40,
     theme: 'grid',
 
-    // ✅ Green header (like your original example)
     headStyles: {
       fillColor: [60, 179, 143],
       textColor: [255, 255, 255],
@@ -62,32 +89,43 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
       valign: 'middle'
     },
 
-    // ✅ Merge DATE cells (unchanged from your original)
     didParseCell: function (data) {
-      if (data.column.index === 0 && data.cell.section === 'body') {
-        const rowIndex = data.row.index;
-        const currentDate = data.cell.raw;
-        let rowSpan = 1;
-        for (let i = rowIndex + 1; i < data.table.body.length; i++) {
-          if (data.table.body[i].cells[0].raw === currentDate) { rowSpan++; } else { break; }
-        }
-        if (rowSpan > 1) { data.cell.rowSpan = rowSpan; }
-        if (rowIndex > 0 && data.table.body[rowIndex - 1].cells[0].raw === currentDate) { data.cell.text = ['']; }
+      if (
+        data.cell.section === 'body' &&
+        data.column.index >= 0 &&
+        data.column.index <= 3
+      ) {
+        merges.forEach(({ startRow, rowSpan }) => {
+          if (rowSpan > 1) {
+            if (data.row.index === startRow) {
+              data.cell.rowSpan = rowSpan;
+            } else if (
+              data.row.index > startRow &&
+              data.row.index < startRow + rowSpan
+            ) {
+              data.cell.text = [''];
+            }
+          }
+        });
       }
     },
 
-    // ✅ Column widths tuned for 7 columns
     columnStyles: {
       0: { cellWidth: 22 },
       1: { cellWidth: 22 },
       2: { cellWidth: 18 },
-      3: { cellWidth: 60 },
-      4: { cellWidth: 22 },
+      3: { cellWidth: 55 },
+      4: { cellWidth: 25 },
       5: { cellWidth: 12 },
       6: { cellWidth: 12 }
     },
 
-    styles: { valign: 'middle', halign: 'center', fontSize: 9, cellPadding: 2 }
+    styles: {
+      valign: 'middle',
+      halign: 'center',
+      fontSize: 9,
+      cellPadding: 2
+    }
   });
 
   doc.save(`${title}.pdf`);
