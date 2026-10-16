@@ -8,19 +8,9 @@ import {
 import { toast } from 'sonner';
 
 const NATURES = [
-  'Masonry',
-  'Painting',
-  'Tiling',
-  'Electrical',
-  'Plumbing',
-  'Carpentry',
-  'Partition',
-  'Finishing',
-  'Concrete',
-  'Terrazzo',
-  'C.D',
-  'T.N',
-  'Faience'
+  'Masonry', 'Painting', 'Tiling', 'Electrical', 'Plumbing',
+  'Carpentry', 'Partition', 'Finishing', 'Concrete', 'Terrazzo',
+  'C.D', 'T.N', 'Faience'
 ];
 
 export const RefectionView = () => {
@@ -34,8 +24,7 @@ export const RefectionView = () => {
   const [formData, setFormData] = useState({
     date: '',
     reference: '',
-    type: 'Refection',
-    materialUsed: ''
+    type: 'Refection'
   });
 
   const [measurements, setMeasurements] = useState([
@@ -62,12 +51,7 @@ export const RefectionView = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      date: '',
-      reference: '',
-      type: 'Refection',
-      materialUsed: ''
-    });
+    setFormData({ date: '', reference: '', type: 'Refection' });
     setMeasurements([{ l: '', L: '', nature: '' }]);
     setMapPoints([]);
   };
@@ -130,12 +114,15 @@ export const RefectionView = () => {
       const measurementsText = (r.measurements || [])
         .map((m) => `${m.l} ${m.L} ${m.nature || ''}`)
         .join(' ');
+      const pointsText = (r.points || [])
+        .map((p) => `${p.label} ${p.x} ${p.y}`)
+        .join(' ');
       return (
         (r.date || '').toLowerCase().includes(q) ||
         (r.reference || '').toLowerCase().includes(q) ||
         (r.type || '').toLowerCase().includes(q) ||
-        (r.materialUsed || '').toLowerCase().includes(q) ||
-        measurementsText.toLowerCase().includes(q)
+        measurementsText.toLowerCase().includes(q) ||
+        pointsText.toLowerCase().includes(q)
       );
     });
   }, [refections, search]);
@@ -154,6 +141,7 @@ export const RefectionView = () => {
         </p>
       </div>
 
+      {/* FORM CARD */}
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl mb-6">
         <div className="flex items-center gap-2 mb-5">
           <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
@@ -183,13 +171,9 @@ export const RefectionView = () => {
               <option value="Maintenance">Maintenance</option>
             </select>
           </div>
-
-          <div className="md:col-span-2 lg:col-span-3">
-            <label className={labelClass}>Material Used</label>
-            <input name="materialUsed" value={formData.materialUsed} onChange={handleChange} placeholder="e.g. [Porcelain tile 60x60 (15m²) + Adhesive 25kg (3u)]" className={inputClass} />
-          </div>
         </div>
 
+        {/* MEASUREMENTS */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <label className={labelClass}>Measurements (l × L — each with its own nature)</label>
@@ -297,6 +281,7 @@ export const RefectionView = () => {
         </div>
       </div>
 
+      {/* TABLE CARD */}
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
@@ -346,12 +331,12 @@ export const RefectionView = () => {
                   <th className="text-left py-2 px-2">Date</th>
                   <th className="text-left py-2 px-2">Ref</th>
                   <th className="text-left py-2 px-2">Type</th>
-                  <th className="text-left py-2 px-2">Material</th>
                   <th className="text-left py-2 px-2">Nature</th>
                   <th className="text-center py-2 px-2">l</th>
                   <th className="text-center py-2 px-2">L</th>
                   <th className="text-center py-2 px-2">Area</th>
-                  <th className="text-center py-2 px-2">Pts</th>
+                  <th className="text-center py-2 px-2">X</th>
+                  <th className="text-center py-2 px-2">Y</th>
                   <th className="text-center py-2 px-2">PDF</th>
                   <th className="text-center py-2 px-2"></th>
                 </tr>
@@ -362,34 +347,40 @@ export const RefectionView = () => {
                     r.measurements && r.measurements.length > 0
                       ? r.measurements
                       : [{ l: r.l || '', L: r.L || '', nature: r.terrainNature || r.nature || '' }];
-                  const pointsCount = (r.points || []).length;
+                  const pts = r.points && r.points.length > 0 ? r.points : [null];
+                  const totalRows = Math.max(mList.length, pts.length);
 
-                  return mList.map((m, i) => {
+                  const rows = [];
+                  for (let i = 0; i < totalRows; i++) {
+                    const m = mList[i] || {};
+                    const p = pts[i] || null;
                     const isFirst = i === 0;
                     const area =
                       m.l && m.L
                         ? (parseFloat(m.l) * parseFloat(m.L)).toFixed(2)
                         : '';
-                    return (
+                    rows.push(
                       <tr key={`${r.id}-${i}`} className="border-b border-slate-800 hover:bg-white/5">
                         {isFirst && (
                           <>
-                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.date}</td>
-                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.reference}</td>
-                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.type}</td>
-                            <td rowSpan={mList.length} className="py-2 px-2 align-top max-w-[220px] truncate">{r.materialUsed}</td>
+                            <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.date}</td>
+                            <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.reference}</td>
+                            <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.type}</td>
                           </>
                         )}
-                        <td className="py-2 px-2">{m.nature}</td>
-                        <td className="text-center py-2 px-2">{m.l}</td>
-                        <td className="text-center py-2 px-2">{m.L}</td>
+                        <td className="py-2 px-2">{m.nature || ''}</td>
+                        <td className="text-center py-2 px-2">{m.l || ''}</td>
+                        <td className="text-center py-2 px-2">{m.L || ''}</td>
                         <td className="text-center py-2 px-2 text-cyan-400 font-semibold">{area}</td>
+                        <td className="text-center py-2 px-2 font-mono text-[10px]">
+                          {p ? (p.label ? `${p.label}: ` : '') + (p.x ?? '') : ''}
+                        </td>
+                        <td className="text-center py-2 px-2 font-mono text-[10px]">
+                          {p ? (p.y ?? '') : ''}
+                        </td>
                         {isFirst && (
                           <>
-                            <td rowSpan={mList.length} className="text-center py-2 px-2 align-top text-cyan-400 font-bold">
-                              {pointsCount > 0 ? `${pointsCount}` : '—'}
-                            </td>
-                            <td rowSpan={mList.length} className="text-center py-2 px-2 align-top">
+                            <td rowSpan={totalRows} className="text-center py-2 px-2 align-top">
                               <button
                                 onClick={() => handleSingleDownload(r)}
                                 className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg p-1.5 transition"
@@ -398,7 +389,7 @@ export const RefectionView = () => {
                                 <FileDown className="w-3.5 h-3.5" />
                               </button>
                             </td>
-                            <td rowSpan={mList.length} className="text-center py-2 px-2 align-top">
+                            <td rowSpan={totalRows} className="text-center py-2 px-2 align-top">
                               <button
                                 onClick={() => handleDelete(r.id)}
                                 className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-1.5 transition"
@@ -411,7 +402,8 @@ export const RefectionView = () => {
                         )}
                       </tr>
                     );
-                  });
+                  }
+                  return rows;
                 })}
               </tbody>
             </table>
