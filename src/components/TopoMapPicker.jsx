@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  MapContainer, TileLayer, Marker, Popup, useMapEvents, LayersControl
+  MapContainer, TileLayer, Marker, Popup, useMapEvents, LayersControl, useMap
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
-  X as CloseIcon, MapPin, Navigation, Trash2, Download, Plus
+  X as CloseIcon, MapPin, Navigation, Trash2, Download, Plus, Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { wgs84ToLambertMarocZone1 } from '../utils/lambertMaroc';
 
 const PinIcon = (label) =>
@@ -31,6 +32,17 @@ function ClickHandler({ onMapClick }) {
   return null;
 }
 
+// Control the map from outside the component
+function MapController({ flyTo }) {
+  const map = useMap();
+  useEffect(() => {
+    if (flyTo) {
+      map.flyTo([flyTo.lat, flyTo.lng], 17, { duration: 1.2 });
+    }
+  }, [flyTo, map]);
+  return null;
+}
+
 export default function TopoMapPicker({
   isOpen,
   onClose,
@@ -39,6 +51,8 @@ export default function TopoMapPicker({
 }) {
   const defaultCenter = [31.7917, -7.0926];
   const [points, setPoints] = useState([]);
+  const [locating, setLocating] = useState(false);
+  const [flyTo, setFlyTo] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,20 +85,42 @@ export default function TopoMapPicker({
   };
 
   const handleAutoLocate = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => handleMapClick({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => alert('Erreur de géolocalisation'),
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
-    } else {
-      alert('Géolocalisation non supportée');
+    if (!navigator.geolocation) {
+      toast.error('GPS not supported on this browser');
+      return;
     }
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      toast.error('GPS requires HTTPS. Use the deployed site.');
+      return;
+    }
+
+    setLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const { latitude, longitude, accuracy } = pos.coords;
+
+        setFlyTo({ lat: latitude, lng: longitude });
+        handleMapClick({ lat: latitude, lng: longitude });
+
+        toast.success(`Located (±${Math.round(accuracy)}m)`);
+      },
+      (err) => {
+        setLocating(false);
+        let msg = 'Location error';
+        if (err.code === 1) msg = 'Permission denied. Enable location in browser settings.';
+        else if (err.code === 2) msg = 'Position unavailable. Try outdoors.';
+        else if (err.code === 3) msg = 'GPS timeout. Try again.';
+        toast.error(msg);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
   };
 
   const handleExportTXT = () => {
     if (points.length === 0) {
-      alert('Aucun point à exporter');
+      toast.error('Aucun point à exporter');
       return;
     }
     const content = points
@@ -98,6 +134,7 @@ export default function TopoMapPicker({
     a.download = `points-topo-${new Date().toISOString().slice(0, 10)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success('TXT exported');
   };
 
   const handleConfirm = () => {
@@ -108,7 +145,8 @@ export default function TopoMapPicker({
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-2 sm:p-6 backdrop-blur-md bg-slate-900/60">
       <div className="relative w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col rounded-2xl sm:rounded-[32px] shadow-2xl overflow-hidden bg-white/95 border border-white/40">
-        <div className="px-4 sm:px-8 py-3 sm:py-5 flex justify-between items-start bg-gradient-to-b from-white to-white/80 border-b border-slate-100">
+        {/* Header */}
+        <div className="px-4 sm:px-8 py-3 sm:py-5 flex justify-between items-center bg-gradient-to-b from-white to-white/80 border-b border-slate-100">
           <div className="flex gap-3 items-center">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-cyan-500/20 flex items-center justify-center text-cyan-500 ring-1 ring-cyan-500/30">
               <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -116,7 +154,7 @@ export default function TopoMapPicker({
             <div>
               <h3 className="text-base sm:text-xl font-black text-slate-900">Topo Map</h3>
               <p className="text-[11px] sm:text-sm font-medium text-slate-500">
-                Tap on map to add points (Lambert Maroc Z1)
+                Tap on map to add points
               </p>
             </div>
           </div>
@@ -128,6 +166,7 @@ export default function TopoMapPicker({
           </button>
         </div>
 
+        {/* Map */}
         <div className="flex-grow w-full relative p-2 sm:p-4 bg-slate-50/50">
           <div className="w-full h-full rounded-2xl overflow-hidden ring-1 ring-slate-200/60 relative">
             <MapContainer
@@ -158,6 +197,7 @@ export default function TopoMapPicker({
               </LayersControl>
 
               <ClickHandler onMapClick={handleMapClick} />
+              <MapController flyTo={flyTo} />
 
               {points.map((p) => (
                 <Marker key={p.id} position={[p.lat, p.lng]} icon={PinIcon(p.label)}>
@@ -185,9 +225,24 @@ export default function TopoMapPicker({
                 </Marker>
               ))}
             </MapContainer>
+
+            {/* FLOATING GPS BUTTON — always visible, top-left of the map */}
+            <button
+              onClick={handleAutoLocate}
+              disabled={locating}
+              className="absolute top-4 left-4 z-[400] w-11 h-11 flex items-center justify-center rounded-xl bg-white border border-slate-200 shadow-md text-blue-600 hover:bg-blue-50 active:scale-95 transition disabled:opacity-50"
+              title="Use my GPS location"
+            >
+              {locating ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Navigation className="w-5 h-5" />
+              )}
+            </button>
           </div>
         </div>
 
+        {/* Points list */}
         <div className="px-4 sm:px-8 py-3 sm:py-4 border-t border-slate-100 bg-white/80 max-h-32 overflow-y-auto">
           {points.length === 0 ? (
             <p className="text-xs text-slate-400 italic">Aucun point ajouté</p>
@@ -216,6 +271,7 @@ export default function TopoMapPicker({
           )}
         </div>
 
+        {/* Footer */}
         <div className="px-4 sm:px-8 py-3 sm:py-5 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-2 bg-white/80">
           <button
             onClick={handleExportTXT}
