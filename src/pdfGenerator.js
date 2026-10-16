@@ -18,9 +18,12 @@ const toBase64 = (url) => {
   });
 };
 
+// Build the body. Each entry becomes one or more rows (one per measurement).
+// If the entry has points, add an extra row right after with the coordinates.
 const buildBody = (entries) => {
   const body = [];
-  const merges = [];
+  const merges = [];     // { startRow, rowSpan } for shared columns
+  const pointRows = [];  // rows that only contain coordinate text
 
   entries.forEach((entry) => {
     const mList =
@@ -48,9 +51,22 @@ const buildBody = (entries) => {
     });
 
     merges.push({ startRow, rowSpan: mList.length });
+
+    // If entry has points, add a coordinates row spanning all columns
+    if (Array.isArray(entry.points) && entry.points.length > 0) {
+      const pointsText = entry.points
+        .map((p) => `${p.label || ''}  X: ${p.x || ''}  Y: ${p.y || ''}  Z: ${p.z ?? 0}`)
+        .join('\n');
+
+      body.push([
+        { content: pointsText, colSpan: 7, styles: { halign: 'left', fontStyle: 'italic' } },
+        '', '', '', '', '', ''
+      ]);
+      pointRows.push(body.length - 1);
+    }
   });
 
-  return { body, merges };
+  return { body, merges, pointRows };
 };
 
 export const generateReportPDF = async (filteredList, selectedMonth) => {
@@ -73,7 +89,7 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
   doc.setFontSize(14);
   doc.text(title, 105, 25, { align: 'center' });
 
-  const { body, merges } = buildBody(filteredList);
+  const { body, merges, pointRows } = buildBody(filteredList);
 
   autoTable(doc, {
     head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature", "l", "L"]],
@@ -90,6 +106,12 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     },
 
     didParseCell: function (data) {
+      // Points rows: hide from merging logic
+      if (pointRows.includes(data.row.index)) {
+        return;
+      }
+
+      // Merge columns 0..3 (DATE, Ref, Type, Matériel) across measurements
       if (
         data.cell.section === 'body' &&
         data.column.index >= 0 &&
@@ -107,6 +129,15 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
             }
           }
         });
+      }
+    },
+
+    didDrawCell: function (data) {
+      // Style the points row: light background
+      if (data.section === 'body' && pointRows.includes(data.row.index)) {
+        const { x, y, width, height } = data.cell;
+        doc.setFillColor(245, 250, 248);
+        doc.rect(x, y, width, height, 'F');
       }
     },
 
