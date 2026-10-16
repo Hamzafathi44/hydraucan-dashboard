@@ -1,11 +1,31 @@
 import { useState, useMemo } from 'react';
 import { generateReportPDF } from '../pdfGenerator';
 import { useRefections } from '../hooks/useRefections';
-import { Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X } from 'lucide-react';
+import {
+  Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X
+} from 'lucide-react';
 import { toast } from 'sonner';
+
+// Fixed list of natures (no more adding from UI)
+const NATURES = [
+  'Masonry',
+  'Painting',
+  'Tiling',
+  'Electrical',
+  'Plumbing',
+  'Carpentry',
+  'Partition',
+  'Finishing',
+  'Concrete',
+  'Terrazzo',
+  'C.D',
+  'T.N',
+  'Faience'
+];
 
 export const RefectionView = () => {
   const { refections, loading, addRefection, deleteRefection } = useRefections();
+
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -13,12 +33,13 @@ export const RefectionView = () => {
     date: '',
     reference: '',
     type: 'Refection',
-    materialUsed: '',
-    terrainNature: ''
+    materialUsed: ''
   });
 
-  // Multiple measurements: [{ l: '', L: '' }, ...]
-  const [measurements, setMeasurements] = useState([{ l: '', L: '' }]);
+  // Each measurement: { l, L, nature }
+  const [measurements, setMeasurements] = useState([
+    { l: '', L: '', nature: '' }
+  ]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,7 +52,7 @@ export const RefectionView = () => {
   };
 
   const addMeasurement = () => {
-    setMeasurements([...measurements, { l: '', L: '' }]);
+    setMeasurements([...measurements, { l: '', L: '', nature: '' }]);
   };
 
   const removeMeasurement = (index) => {
@@ -44,10 +65,9 @@ export const RefectionView = () => {
       date: '',
       reference: '',
       type: 'Refection',
-      materialUsed: '',
-      terrainNature: ''
+      materialUsed: ''
     });
-    setMeasurements([{ l: '', L: '' }]);
+    setMeasurements([{ l: '', L: '', nature: '' }]);
   };
 
   const handleSave = async () => {
@@ -56,13 +76,12 @@ export const RefectionView = () => {
       return;
     }
 
-    // Keep only measurements that have both l and L
     const cleanMeasurements = measurements.filter(
-      (m) => m.l !== '' && m.L !== ''
+      (m) => m.l !== '' && m.L !== '' && m.nature !== ''
     );
 
     if (cleanMeasurements.length === 0) {
-      toast.error('Please add at least one measurement (l and L)');
+      toast.error('Add at least one measurement (l, L, nature)');
       return;
     }
 
@@ -101,20 +120,18 @@ export const RefectionView = () => {
     generateReportPDF(filtered, month);
   };
 
-  // Search filter (works with new measurements array)
   const filtered = useMemo(() => {
     if (!search.trim()) return refections;
     const q = search.toLowerCase();
     return refections.filter((r) => {
       const measurementsText = (r.measurements || [])
-        .map((m) => `${m.l} ${m.L}`)
+        .map((m) => `${m.l} ${m.L} ${m.nature || ''}`)
         .join(' ');
       return (
         (r.date || '').toLowerCase().includes(q) ||
         (r.reference || '').toLowerCase().includes(q) ||
         (r.type || '').toLowerCase().includes(q) ||
         (r.materialUsed || '').toLowerCase().includes(q) ||
-        (r.terrainNature || '').toLowerCase().includes(q) ||
         measurementsText.toLowerCase().includes(q)
       );
     });
@@ -169,32 +186,12 @@ export const RefectionView = () => {
             <label className={labelClass}>Material Used</label>
             <input name="materialUsed" value={formData.materialUsed} onChange={handleChange} placeholder="e.g. [Porcelain tile 60x60 (15m²) + Adhesive 25kg (3u)]" className={inputClass} />
           </div>
-
-          <div>
-            <label className={labelClass}>Nature</label>
-            <select name="terrainNature" value={formData.terrainNature} onChange={handleChange} className={inputClass}>
-              <option value="">-- Select --</option>
-              <option value="Masonry">Masonry</option>
-              <option value="Painting">Painting</option>
-              <option value="Tiling">Tiling</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Plumbing">Plumbing</option>
-              <option value="Carpentry">Carpentry</option>
-              <option value="Partition">Partition</option>
-              <option value="Finishing">Finishing</option>
-              <option value="Concrete">Concrete</option>
-              <option value="Terrazzo">Terrazzo</option>
-              <option value="C.D">C.D</option>
-              <option value="T.N">T.N</option>
-              <option value="Faience">Faience</option>
-            </select>
-          </div>
         </div>
 
         {/* MEASUREMENTS */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
-            <label className={labelClass}>Measurements (l × L)</label>
+            <label className={labelClass}>Measurements (l × L — each with its own nature)</label>
             <button
               type="button"
               onClick={addMeasurement}
@@ -213,7 +210,7 @@ export const RefectionView = () => {
                   : '';
               return (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                  <div className="col-span-3">
+                  <div className="col-span-2">
                     <input
                       type="number"
                       step="0.01"
@@ -223,7 +220,7 @@ export const RefectionView = () => {
                       className={inputClass}
                     />
                   </div>
-                  <div className="col-span-3">
+                  <div className="col-span-2">
                     <input
                       type="number"
                       step="0.01"
@@ -233,15 +230,27 @@ export const RefectionView = () => {
                       className={inputClass}
                     />
                   </div>
-                  <div className="col-span-3">
+                  <div className="col-span-2">
                     <input
                       readOnly
                       value={area}
-                      placeholder="Area (m²)"
+                      placeholder="Area"
                       className={`${inputClass} bg-slate-950/60 text-cyan-400 font-semibold`}
                     />
                   </div>
-                  <div className="col-span-3 flex justify-end">
+                  <div className="col-span-4">
+                    <select
+                      value={m.nature}
+                      onChange={(e) => handleMeasurementChange(idx, 'nature', e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">-- Nature --</option>
+                      {NATURES.map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-2 flex justify-end">
                     <button
                       type="button"
                       onClick={() => removeMeasurement(idx)}
@@ -308,9 +317,10 @@ export const RefectionView = () => {
             <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-slate-500 py-10 text-sm">
-            {search ? 'No matching entries' : 'No entries yet'}
-          </p>
+          <p              className="text-center text-slate-500 </ py-10 text-smthead">
+            {search ? 'No matching>
+ entries' : 'No entries yet'}
+                       </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-slate-300">
@@ -327,12 +337,12 @@ export const RefectionView = () => {
                   <th className="text-center py-2 px-2">PDF</th>
                   <th className="text-center py-2 px-2"></th>
                 </tr>
-              </thead>
-              <tbody>
+ <tbody>
                 {filtered.map((r) => {
-                  const mList = r.measurements && r.measurements.length > 0
-                    ? r.measurements
-                    : [{ l: r.l || '', L: r.L || '' }]; // fallback for old entries
+                  const mList =
+                    r.measurements && r.measurements.length > 0
+                      ? r.measurements
+                      : [{ l: r.l || '', L: r.L || '', nature: r.terrainNature || r.nature || '' }];
 
                   return mList.map((m, i) => {
                     const isFirst = i === 0;
@@ -348,9 +358,9 @@ export const RefectionView = () => {
                             <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.reference}</td>
                             <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.type}</td>
                             <td rowSpan={mList.length} className="py-2 px-2 align-top max-w-[220px] truncate">{r.materialUsed}</td>
-                            <td rowSpan={mList.length} className="py-2 px-2 align-top">{r.terrainNature}</td>
                           </>
                         )}
+                        <td className="py-2 px-2">{m.nature}</td>
                         <td className="text-center py-2 px-2">{m.l}</td>
                         <td className="text-center py-2 px-2">{m.L}</td>
                         <td className="text-center py-2 px-2 text-cyan-400 font-semibold">{area}</td>
