@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { generateReportPDF } from '../pdfGenerator';
 import { useRefections } from '../hooks/useRefections';
+import TopoMapPicker from '../components/TopoMapPicker';
 import {
-  Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X
+  Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,6 +28,8 @@ export const RefectionView = () => {
 
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [mapPoints, setMapPoints] = useState([]);
 
   const [formData, setFormData] = useState({
     date: '',
@@ -66,6 +69,7 @@ export const RefectionView = () => {
       materialUsed: ''
     });
     setMeasurements([{ l: '', L: '', nature: '' }]);
+    setMapPoints([]);
   };
 
   const handleSave = async () => {
@@ -86,7 +90,8 @@ export const RefectionView = () => {
     setSaving(true);
     const result = await addRefection({
       ...formData,
-      measurements: cleanMeasurements
+      measurements: cleanMeasurements,
+      points: mapPoints
     });
     setSaving(false);
     if (result.success) {
@@ -149,7 +154,6 @@ export const RefectionView = () => {
         </p>
       </div>
 
-      {/* FORM CARD */}
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl mb-6">
         <div className="flex items-center gap-2 mb-5">
           <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
@@ -186,7 +190,6 @@ export const RefectionView = () => {
           </div>
         </div>
 
-        {/* MEASUREMENTS */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <label className={labelClass}>Measurements (l × L — each with its own nature)</label>
@@ -264,6 +267,24 @@ export const RefectionView = () => {
           </div>
         </div>
 
+        <div className="flex items-center gap-3 mt-6">
+          <button
+            type="button"
+            onClick={() => setIsMapOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold transition"
+          >
+            <MapPin className="w-4 h-4" />
+            {mapPoints.length > 0
+              ? `Points (${mapPoints.length})`
+              : 'Choose Location (Topo Map)'}
+          </button>
+          {mapPoints.length > 0 && (
+            <span className="text-xs text-cyan-400 font-mono truncate max-w-xs">
+              {mapPoints.map((p) => p.label).join(', ')}
+            </span>
+          )}
+        </div>
+
         <div className="flex justify-end mt-6">
           <button
             onClick={handleSave}
@@ -276,7 +297,6 @@ export const RefectionView = () => {
         </div>
       </div>
 
-      {/* TABLE CARD */}
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
@@ -331,6 +351,7 @@ export const RefectionView = () => {
                   <th className="text-center py-2 px-2">l</th>
                   <th className="text-center py-2 px-2">L</th>
                   <th className="text-center py-2 px-2">Area</th>
+                  <th className="text-center py-2 px-2">Pts</th>
                   <th className="text-center py-2 px-2">PDF</th>
                   <th className="text-center py-2 px-2"></th>
                 </tr>
@@ -341,6 +362,7 @@ export const RefectionView = () => {
                     r.measurements && r.measurements.length > 0
                       ? r.measurements
                       : [{ l: r.l || '', L: r.L || '', nature: r.terrainNature || r.nature || '' }];
+                  const pointsCount = (r.points || []).length;
 
                   return mList.map((m, i) => {
                     const isFirst = i === 0;
@@ -364,6 +386,9 @@ export const RefectionView = () => {
                         <td className="text-center py-2 px-2 text-cyan-400 font-semibold">{area}</td>
                         {isFirst && (
                           <>
+                            <td rowSpan={mList.length} className="text-center py-2 px-2 align-top text-cyan-400 font-bold">
+                              {pointsCount > 0 ? `${pointsCount}` : '—'}
+                            </td>
                             <td rowSpan={mList.length} className="text-center py-2 px-2 align-top">
                               <button
                                 onClick={() => handleSingleDownload(r)}
@@ -393,6 +418,13 @@ export const RefectionView = () => {
           </div>
         )}
       </div>
+
+      <TopoMapPicker
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        onConfirm={(pts) => setMapPoints(pts)}
+        initialPoints={mapPoints}
+      />
     </section>
   );
 };
