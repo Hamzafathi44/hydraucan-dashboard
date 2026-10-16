@@ -36,7 +36,6 @@ export const RefectionView = () => {
     materialUsed: ''
   });
 
-  // Each measurement: { l, L, nature }
   const [measurements, setMeasurements] = useState([
     { l: '', L: '', nature: '' }
   ]);
@@ -285,10 +284,10 @@ export const RefectionView = () => {
             <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
               <FileDown className="w-4 h-4 text-cyan-400" />
             </div>
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text </-slate-300 uppercase tracking-wider">
               Saved Entries ({filtered.length}{search && ` / ${refections.length}`})
             </h3>
-          </div>
+         div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <div className="relative">
@@ -317,10 +316,9 @@ export const RefectionView = () => {
             <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <p              className="text-center text-slate-500 </ py-10 text-smthead">
-            {search ? 'No matching>
- entries' : 'No entries yet'}
-                       </p>
+          <p className="text-center text-slate-500 py-10 text-sm">
+            {search ? 'No matching entries' : 'No entries yet'}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-slate-300">
@@ -337,7 +335,8 @@ export const RefectionView = () => {
                   <th className="text-center py-2 px-2">PDF</th>
                   <th className="text-center py-2 px-2"></th>
                 </tr>
- <tbody>
+              </thead>
+              <tbody>
                 {filtered.map((r) => {
                   const mList =
                     r.measurements && r.measurements.length > 0
