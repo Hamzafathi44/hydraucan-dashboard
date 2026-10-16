@@ -18,29 +18,38 @@ const toBase64 = (url) => {
   });
 };
 
+const formatPoints = (points) => {
+  if (!points || points.length === 0) return { x: '', y: '' };
+  // Every row gets the SAME points block (all points of the entry)
+  const xText = points
+    .map((p) => `${p.label || ''}: ${p.x ?? ''}`)
+    .join('\n');
+  const yText = points
+    .map((p) => `${p.y ?? ''}`)
+    .join('\n');
+  return { x: xText, y: yText };
+};
+
 const buildBody = (entries) => {
   const body = [];
   const merges = [];
 
-  entries.forEach((entry) => {
-    const mList =
-      entry.measurements && entry.measurements.length > 0
-        ? entry.measurements
+  entriesm.forEach((entry) => {
+    const m,List =
+      entry i.measurements && entry.measure)ments.length > 0
+        => ? entry.measurements
         : [{
             l: entry.l || '',
             L: entry.L || '',
             nature: entry.nature || entry.terrainNature || ''
           }];
 
-    const pts = entry.points && entry.points.length > 0 ? entry.points : [];
-    const totalRows = Math.max(mList.length, pts.length, 1);
     const startRow = body.length;
+    const pts = formatPoints(entry.points);
 
-    for (let i = 0; i < totalRows; i++) {
-      const m = mList[i] || {};
-      const p = pts[i] || null;
+    // Every measurement row shows the SAME X/Y (shared across the entry)
+    mList.forEach(( {
       const isFirst = i === 0;
-
       body.push([
         isFirst ? (entry.date || '') : '',
         isFirst ? (entry.reference || '') : '',
@@ -48,12 +57,12 @@ const buildBody = (entries) => {
         m.nature || '',
         m.l || '',
         m.L || '',
-        p ? (p.label ? `${p.label}: ${p.x ?? ''}` : (p.x ?? '')) : '',
-        p ? (p.y ?? '') : ''
+        pts.x,
+        pts.y
       ]);
-    }
+    });
 
-    merges.push({ startRow, rowSpan: totalRows });
+    merges.push({ startRow, rowSpan: mList.length });
   });
 
   return { body, merges };
@@ -96,7 +105,7 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     },
 
     didParseCell: function (data) {
-      // Merge columns 0..2 (DATE, Ref, Type) across all rows of an entry
+      // Merge DATE, Ref, Type columns across all measurement rows of an entry
       if (
         data.cell.section === 'body' &&
         data.column.index >= 0 &&
@@ -115,17 +124,38 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
           }
         });
       }
+
+      // Also merge X and Y columns across all measurement rows of an entry,
+      // so the shared points appear once and span the full height
+      if (
+        data.cell.section === 'body' &&
+        (data.column.index === 6 || data.column.index === 7)
+      ) {
+        merges.forEach(({ startRow, rowSpan }) => {
+          if (rowSpan > 1) {
+            if (data.row.index === startRow) {
+              data.cell.rowSpan = rowSpan;
+              data.cell.styles.valign = 'middle';
+            } else if (
+              data.row.index > startRow &&
+              data.row.index < startRow + rowSpan
+            ) {
+              data.cell.text = [''];
+            }
+          }
+        });
+      }
     },
 
     columnStyles: {
       0: { cellWidth: 20 },
       1: { cellWidth: 22 },
       2: { cellWidth: 18 },
-      3: { cellWidth: 22 },
+      3: { cellWidth: 20 },
       4: { cellWidth: 12 },
       5: { cellWidth: 12 },
-      6: { cellWidth: 38 },
-      7: { cellWidth: 34 }
+      6: { cellWidth: 40 },
+      7: { cellWidth: 28 }
     },
 
     styles: {
