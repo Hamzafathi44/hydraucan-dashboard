@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import. { generateReportPDF } from '../pdfGenerator';
+import { generateReportPDF } from '../pdfGenerator';
 import { useRefections } from '../hooks/useRefections';
 import TopoMapPicker from '../components/TopoMapPicker';
 import {
