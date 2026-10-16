@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Fixed list of natures (no more adding from UI)
 const NATURES = [
   'Masonry',
   'Painting',
@@ -284,10 +283,10 @@ export const RefectionView = () => {
             <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
               <FileDown className="w-4 h-4 text-cyan-400" />
             </div>
-            <h3 className="text-xs font-bold text </-slate-300 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
               Saved Entries ({filtered.length}{search && ` / ${refections.length}`})
             </h3>
-         div>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <div className="relative">
