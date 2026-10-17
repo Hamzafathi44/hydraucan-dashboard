@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { generateReportPDF } from '../pdfGenerator';
 import { useRefections } from '../hooks/useRefections';
 import TopoMapPicker from '../components/TopoMapPicker';
@@ -20,7 +20,7 @@ export const RefectionView = () => {
   const [search, setSearch] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapPoints, setMapPoints] = useState([]);
-  const [editingId, setEditingId] = useState(null); // ✅ NEW
+  const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
     date: '',
@@ -55,10 +55,9 @@ export const RefectionView = () => {
     setFormData({ date: '', reference: '', type: 'Refection' });
     setMeasurements([{ l: '', L: '', nature: '' }]);
     setMapPoints([]);
-    setEditingId(null); // ✅ Reset edit mode
+    setEditingId(null);
   };
 
-  // ✅ New handler to start editing
   const handleEditClick = (entry) => {
     setFormData({
       date: entry.date || '',
@@ -66,7 +65,6 @@ export const RefectionView = () => {
       type: entry.type || 'Refection'
     });
     
-    // Fallback for old entries without measurements array
     setMeasurements(
       entry.measurements && entry.measurements.length > 0
         ? entry.measurements
@@ -76,7 +74,6 @@ export const RefectionView = () => {
     setMapPoints(entry.points || []);
     setEditingId(entry.id);
     
-    // Scroll to top so user sees the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -99,14 +96,12 @@ export const RefectionView = () => {
     let result;
 
     if (editingId) {
-      // ✅ Update existing entry
       result = await updateRefection(editingId, {
         ...formData,
         measurements: cleanMeasurements,
         points: mapPoints
       });
     } else {
-      // Create new entry
       result = await addRefection({
         ...formData,
         measurements: cleanMeasurements,
@@ -125,7 +120,7 @@ export const RefectionView = () => {
   };
 
   const handleDelete = async (id) => {
-    if (editingId === id) resetForm(); // If deleting the one being edited, reset form
+    if (editingId === id) resetForm();
     if (!window.confirm('Delete this entry?')) return;
     const result = await deleteRefection(id);
     if (result.success) toast.success('Deleted');
@@ -399,7 +394,7 @@ export const RefectionView = () => {
                       : [{ l: r.l || '', L: r.L || '', nature: r.terrainNature || r.nature || '' }];
                   const pts = r.points && r.points.length > 0 ? r.points : [null];
                   const totalRows = Math.max(mList.length, pts.length);
-                  const isEditingRow = editingId === r.id; // ✅ Highlight row being edited
+                  const isEditingRow = editingId === r.id;
 
                   const rows = [];
                   for (let i = 0; i < totalRows; i++) {
@@ -440,7 +435,6 @@ export const RefectionView = () => {
                                 <FileDown className="w-3.5 h-3.5" />
                               </button>
                             </td>
-                            {/* ✅ NEW EDIT BUTTON */}
                             <td rowSpan={totalRows} className="text-center py-2 px-2 align-top">
                               <button
                                 onClick={() => handleEditClick(r)}
