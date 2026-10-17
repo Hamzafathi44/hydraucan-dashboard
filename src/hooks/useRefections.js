@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import {
   collection,
   onSnapshot,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   serverTimestamp,
   query,
@@ -49,6 +49,19 @@ export const useRefections = () => {
     }
   };
 
+  const updateRefection = async (id, data) => {
+    try {
+      await updateDoc(doc(db, 'refections', id), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating refection:', error);
+      return { success: false, error };
+    }
+  };
+
   const deleteRefection = async (id) => {
     try {
       await deleteDoc(doc(db, 'refections', id));
@@ -59,5 +72,5 @@ export const useRefections = () => {
     }
   };
 
-  return { refections, loading, addRefection, deleteRefection };
+  return { refections, loading, addRefection, updateRefection, deleteRefection };
 };
