@@ -51,7 +51,12 @@ export const useRefections = () => {
 
   const updateRefection = async (id, data) => {
     try {
-      await updateDoc(doc(db, 'refections', id), {
+      // 🔍 We log this to make sure the ID and data are correct
+      console.log("Updating ID:", id);
+      console.log("New Data:", data);
+      
+      const docRef = doc(db, 'refections', id);
+      await updateDoc(docRef, {
         ...data,
         updatedAt: serverTimestamp()
       });
