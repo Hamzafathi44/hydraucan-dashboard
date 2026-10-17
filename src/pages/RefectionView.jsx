@@ -480,4 +480,4 @@ export const RefectionView = () => {
       />
     </section>
   );
-};.
+};
