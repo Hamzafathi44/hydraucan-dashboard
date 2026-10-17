@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { generateReportPDF } from '../pdfGenerator';
 import { useRefections } from '../hooks/useRefections';
 import TopoMapPicker from '../components/TopoMapPicker';
 import {
-  Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X, MapPin
+  Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X, MapPin, Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -14,12 +14,13 @@ const NATURES = [
 ];
 
 export const RefectionView = () => {
-  const { refections, loading, addRefection, deleteRefection } = useRefections();
+  const { refections, loading, addRefection, updateRefection, deleteRefection } = useRefections();
 
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapPoints, setMapPoints] = useState([]);
+  const [editingId, setEditingId] = useState(null); // ✅ NEW
 
   const [formData, setFormData] = useState({
     date: '',
@@ -54,6 +55,29 @@ export const RefectionView = () => {
     setFormData({ date: '', reference: '', type: 'Refection' });
     setMeasurements([{ l: '', L: '', nature: '' }]);
     setMapPoints([]);
+    setEditingId(null); // ✅ Reset edit mode
+  };
+
+  // ✅ New handler to start editing
+  const handleEditClick = (entry) => {
+    setFormData({
+      date: entry.date || '',
+      reference: entry.reference || '',
+      type: entry.type || 'Refection'
+    });
+    
+    // Fallback for old entries without measurements array
+    setMeasurements(
+      entry.measurements && entry.measurements.length > 0
+        ? entry.measurements
+        : [{ l: entry.l || '', L: entry.L || '', nature: entry.nature || '' }]
+    );
+    
+    setMapPoints(entry.points || []);
+    setEditingId(entry.id);
+    
+    // Scroll to top so user sees the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSave = async () => {
@@ -72,21 +96,36 @@ export const RefectionView = () => {
     }
 
     setSaving(true);
-    const result = await addRefection({
-      ...formData,
-      measurements: cleanMeasurements,
-      points: mapPoints
-    });
+    let result;
+
+    if (editingId) {
+      // ✅ Update existing entry
+      result = await updateRefection(editingId, {
+        ...formData,
+        measurements: cleanMeasurements,
+        points: mapPoints
+      });
+    } else {
+      // Create new entry
+      result = await addRefection({
+        ...formData,
+        measurements: cleanMeasurements,
+        points: mapPoints
+      });
+    }
+
     setSaving(false);
+
     if (result.success) {
-      toast.success('Entry saved');
+      toast.success(editingId ? 'Entry updated' : 'Entry saved');
       resetForm();
     } else {
-      toast.error('Failed to save');
+      toast.error(editingId ? 'Failed to update' : 'Failed to save');
     }
   };
 
   const handleDelete = async (id) => {
+    if (editingId === id) resetForm(); // If deleting the one being edited, reset form
     if (!window.confirm('Delete this entry?')) return;
     const result = await deleteRefection(id);
     if (result.success) toast.success('Deleted');
@@ -142,14 +181,24 @@ export const RefectionView = () => {
       </div>
 
       {/* FORM CARD */}
-      <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl mb-6">
-        <div className="flex items-center gap-2 mb-5">
-          <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-            <Wrench className="w-4 h-4 text-cyan-400" />
+      <div className={`bg-slate-900/50 backdrop-blur-md border ${editingId ? 'border-yellow-500/50 shadow-yellow-500/10' : 'border-slate-700/60'} rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl mb-6 transition-colors duration-300`}>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-lg ${editingId ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-cyan-500/10 border-cyan-500/20'} border flex items-center justify-center`}>
+              {editingId ? <Pencil className="w-4 h-4 text-yellow-400" /> : <Wrench className="w-4 h-4 text-cyan-400" />}
+            </div>
+            <h3 className={`text-xs font-bold ${editingId ? 'text-yellow-400' : 'text-slate-300'} uppercase tracking-wider`}>
+              {editingId ? 'Edit Entry' : 'New Entry — Refection'}
+            </h3>
           </div>
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            New Entry — Refection
-          </h3>
+          {editingId && (
+            <button
+              onClick={resetForm}
+              className="text-xs font-bold text-slate-400 hover:text-white transition"
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -273,10 +322,10 @@ export const RefectionView = () => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-6 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-50"
+            className={`text-sm font-bold px-6 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-50 ${editingId ? 'bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-yellow-300' : 'bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300'}`}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Saving...' : 'Save Entry'}
+            {saving ? 'Saving...' : (editingId ? 'Update Entry' : 'Save Entry')}
           </button>
         </div>
       </div>
@@ -338,6 +387,7 @@ export const RefectionView = () => {
                   <th className="text-center py-2 px-2">X</th>
                   <th className="text-center py-2 px-2">Y</th>
                   <th className="text-center py-2 px-2">PDF</th>
+                  <th className="text-center py-2 px-2">Edit</th>
                   <th className="text-center py-2 px-2"></th>
                 </tr>
               </thead>
@@ -349,6 +399,7 @@ export const RefectionView = () => {
                       : [{ l: r.l || '', L: r.L || '', nature: r.terrainNature || r.nature || '' }];
                   const pts = r.points && r.points.length > 0 ? r.points : [null];
                   const totalRows = Math.max(mList.length, pts.length);
+                  const isEditingRow = editingId === r.id; // ✅ Highlight row being edited
 
                   const rows = [];
                   for (let i = 0; i < totalRows; i++) {
@@ -360,7 +411,7 @@ export const RefectionView = () => {
                         ? (parseFloat(m.l) * parseFloat(m.L)).toFixed(2)
                         : '';
                     rows.push(
-                      <tr key={`${r.id}-${i}`} className="border-b border-slate-800 hover:bg-white/5">
+                      <tr key={`${r.id}-${i}`} className={`border-b border-slate-800 hover:bg-white/5 ${isEditingRow ? 'bg-yellow-500/5' : ''}`}>
                         {isFirst && (
                           <>
                             <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.date}</td>
@@ -387,6 +438,16 @@ export const RefectionView = () => {
                                 title="Download this entry as PDF"
                               >
                                 <FileDown className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                            {/* ✅ NEW EDIT BUTTON */}
+                            <td rowSpan={totalRows} className="text-center py-2 px-2 align-top">
+                              <button
+                                onClick={() => handleEditClick(r)}
+                                className={`rounded-lg p-1.5 transition ${isEditingRow ? 'text-yellow-400 bg-yellow-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                                title="Edit Entry"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
                               </button>
                             </td>
                             <td rowSpan={totalRows} className="text-center py-2 px-2 align-top">
