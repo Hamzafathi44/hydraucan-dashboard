@@ -20,7 +20,6 @@ const toBase64 = (url) => {
 
 const formatPoints = (points) => {
   if (!points || points.length === 0) return { x: '', y: '' };
-  // Every row gets the SAME points block (all points of the entry)
   const xText = points
     .map((p) => `${p.label || ''}: ${p.x ?? ''}`)
     .join('\n');
@@ -34,10 +33,10 @@ const buildBody = (entries) => {
   const body = [];
   const merges = [];
 
-  entriesm.forEach((entry) => {
-    const m,List =
-      entry i.measurements && entry.measure)ments.length > 0
-        => ? entry.measurements
+  entries.forEach((entry) => {
+    const mList =
+      entry.measurements && entry.measurements.length > 0
+        ? entry.measurements
         : [{
             l: entry.l || '',
             L: entry.L || '',
@@ -47,8 +46,7 @@ const buildBody = (entries) => {
     const startRow = body.length;
     const pts = formatPoints(entry.points);
 
-    // Every measurement row shows the SAME X/Y (shared across the entry)
-    mList.forEach(( {
+    mList.forEach((m, i) => {
       const isFirst = i === 0;
       body.push([
         isFirst ? (entry.date || '') : '',
@@ -105,7 +103,6 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     },
 
     didParseCell: function (data) {
-      // Merge DATE, Ref, Type columns across all measurement rows of an entry
       if (
         data.cell.section === 'body' &&
         data.column.index >= 0 &&
@@ -125,8 +122,6 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
         });
       }
 
-      // Also merge X and Y columns across all measurement rows of an entry,
-      // so the shared points appear once and span the full height
       if (
         data.cell.section === 'body' &&
         (data.column.index === 6 || data.column.index === 7)
