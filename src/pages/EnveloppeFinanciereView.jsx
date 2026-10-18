@@ -1,12 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, AlertTriangle } from 'lucide-react';
 
-const DOC_ID = 'monthly_report'; // We save one main report for now
+const DOC_ID = 'monthly_report';
 
 export const EnveloppeFinanciereView = () => {
   const [loading, setLoading] = useState(true);
@@ -18,12 +18,10 @@ export const EnveloppeFinanciereView = () => {
   });
 
   const [rows, setRows] = useState([]);
-
-  // Image Upload State
   const fileInputRef = useRef(null);
   const [activeUpload, setActiveUpload] = useState({ rowId: null, field: null });
 
-  // 1. Load Data from Firestore
+  // Load Data
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -34,12 +32,10 @@ export const EnveloppeFinanciereView = () => {
           setHeader(data.header || { beneficiaire: '', montantAlloue: '' });
           setRows(data.rows || []);
         } else {
-          // Default empty row if no data exists
           setRows([{ id: Date.now(), cimentQt: '', cimentPrix: '', cimentImg: null, argileQt: '', argilePrix: '', argileImg: null, carburant: '', carburantImg: null, autres: '', autresImg: null }]);
         }
       } catch (error) {
-        console.error("Error loading data:", error);
-        toast.error("Failed to load data");
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -47,29 +43,22 @@ export const EnveloppeFinanciereView = () => {
     loadData();
   }, []);
 
-  // 2. Save Data to Firestore
   const saveData = async () => {
     setSaving(true);
     try {
       const docRef = doc(db, 'enveloppe_reports', DOC_ID);
       await setDoc(docRef, { header, rows }, { merge: true });
-      toast.success("Rapport sauvegardé avec succès !");
+      toast.success("Rapport sauvegardé !");
     } catch (error) {
-      console.error("Error saving:", error);
       toast.error("Erreur de sauvegarde");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleHeaderChange = (e) => {
-    setHeader({ ...header, [e.target.name]: e.target.value });
-  };
-
-  const handleRowChange = (id, field, value) => {
-    setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r));
-  };
-
+  const handleHeaderChange = (e) => setHeader({ ...header, [e.target.name]: e.target.value });
+  const handleRowChange = (id, field, value) => setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r));
+  
   const addRow = () => {
     setRows([...rows, { id: Date.now(), cimentQt: '', cimentPrix: '', cimentImg: null, argileQt: '', argilePrix: '', argileImg: null, carburant: '', carburantImg: null, autres: '', autresImg: null }]);
   };
@@ -79,7 +68,7 @@ export const EnveloppeFinanciereView = () => {
     setRows(rows.filter(r => r.id !== id));
   };
 
-  // 3. Image Handlers
+  // Image logic
   const triggerImageUpload = (rowId, field) => {
     setActiveUpload({ rowId, field });
     fileInputRef.current.click();
@@ -88,38 +77,27 @@ export const EnveloppeFinanciereView = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file || !activeUpload.rowId || !activeUpload.field) return;
-
-    if (file.size > 1.5 * 1024 * 1024) {
-      toast.error("Image trop lourde (max 1.5MB pour éviter de bloquer la base)");
-      return;
-    }
+    if (file.size > 1.5 * 1024 * 1024) return toast.error("Image trop lourde (max 1.5MB)");
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const base64 = event.target.result;
-      setRows(rows.map(r => 
-        r.id === activeUpload.rowId ? { ...r, [activeUpload.field]: base64 } : r
-      ));
+      setRows(rows.map(r => r.id === activeUpload.rowId ? { ...r, [activeUpload.field]: event.target.result } : r));
       toast.success("Preuve ajoutée");
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
 
-  const removeImage = (rowId, field) => {
-    setRows(rows.map(r => r.id === rowId ? { ...r, [field]: null } : r));
-  };
+  const removeImage = (rowId, field) => setRows(rows.map(r => r.id === rowId ? { ...r, [field]: null } : r));
 
-  // 4. Calculations (Fixed)
+  // Calculations
   const calculatedRows = useMemo(() => {
     return rows.map((d) => {
       const cimentTotal = (parseFloat(d.cimentQt) || 0) * (parseFloat(d.cimentPrix) || 0);
       const argileTotal = (parseFloat(d.argileQt) || 0) * (parseFloat(d.argilePrix) || 0);
       const carburant = parseFloat(d.carburant) || 0;
       const autres = parseFloat(d.autres) || 0;
-      
-      const totalJour = cimentTotal + argileTotal + carburant + autres;
-      return { ...d, cimentTotal, argileTotal, totalJour };
+      return { ...d, cimentTotal, argileTotal, totalJour: cimentTotal + argileTotal + carburant + autres };
     });
   }, [rows]);
 
@@ -136,11 +114,12 @@ export const EnveloppeFinanciereView = () => {
   const montantAlloue = parseFloat(header.montantAlloue) || 0;
   const soldeRestant = montantAlloue - totals.totalJour;
 
-  // 5. PDF Generation with Multiple Images
+  // PDF GENERATION (PRO VERSION)
   const handleGeneratePDF = () => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
 
+    // --- PAGE 1: MAIN TABLE ---
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 15, { align: 'center' });
@@ -149,20 +128,16 @@ export const EnveloppeFinanciereView = () => {
     doc.setFont("helvetica", "normal");
     doc.text(`Bénéficiaire : ${header.beneficiaire || '................................'}`, 14, 25);
     doc.text(`Montant alloué : ${montantAlloue.toFixed(2)} DH`, 14, 31);
+    doc.text(`Date d'impression : ${new Date().toLocaleDateString('fr-FR')}`, 14, 37);
 
-    // We use a simplified table for PDF to show images neatly
-    const tableBody = calculatedRows.map((d, index) => {
-      // We construct the image string (comma separated if multiple, but here we show just the presence)
-      return [
-        index + 1,
-        d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
-        d.argileQt, d.argilePrix, d.argileTotal ? d.argileTotal.toFixed(2) : '',
-        d.carburant,
-        d.autres,
-        d.totalJour ? d.totalJour.toFixed(2) : '',
-        '' // Placeholder for images, we'll draw them manually
-      ];
-    });
+    const tableBody = calculatedRows.map((d, index) => [
+      index + 1,
+      d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
+      d.argileQt, d.argilePrix, d.argileTotal ? d.argileTotal.toFixed(2) : '',
+      d.carburant,
+      d.autres,
+      d.totalJour ? d.totalJour.toFixed(2) : ''
+    ]);
 
     tableBody.push([
       { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
@@ -170,8 +145,7 @@ export const EnveloppeFinanciereView = () => {
       '', '', totals.argileTotal.toFixed(2),
       totals.carburant.toFixed(2),
       totals.autres.toFixed(2),
-      totals.totalJour.toFixed(2),
-      ''
+      totals.totalJour.toFixed(2)
     ]);
 
     autoTable(doc, {
@@ -182,52 +156,23 @@ export const EnveloppeFinanciereView = () => {
           { content: 'Argile / Faïence', colSpan: 3, styles: { halign: 'center' } },
           { content: 'Carburant', rowSpan: 2 },
           { content: 'Autres', rowSpan: 2 },
-          { content: 'Total', rowSpan: 2 },
-          { content: 'Preuves (Images)', rowSpan: 2 }
+          { content: 'Total', rowSpan: 2 }
         ],
         ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
       ],
       body: tableBody,
-      startY: 40,
+      startY: 45,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 1, halign: 'center', valign: 'middle' },
+      styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 12 }, 2: { cellWidth: 15 }, 3: { cellWidth: 20 },
-        4: { cellWidth: 12 }, 5: { cellWidth: 15 }, 6: { cellWidth: 20 },
-        7: { cellWidth: 20 }, 8: { cellWidth: 20 }, 9: { cellWidth: 20 },
-        10: { cellWidth: 40 } // Wide column for images
-      },
-      didDrawCell: function (data) {
-        // Draw images in the last column (index 10)
-        if (data.section === 'body' && data.column.index === 10) {
-          const rowData = calculatedRows[data.row.index];
-          if (!rowData) return;
-
-          // Collect all images for this row
-          const images = [rowData.cimentImg, rowData.argileImg, rowData.carburantImg, rowData.autresImg].filter(img => img);
-          
-          if (images.length > 0) {
-            const padding = 1;
-            const imgWidth = (data.cell.width - (padding * (images.length + 1))) / images.length;
-            const imgHeight = data.cell.height - (padding * 2);
-
-            images.forEach((img, idx) => {
-              const x = data.cell.x + padding + (idx * (imgWidth + padding));
-              try {
-                doc.addImage(img, 'JPEG', x, data.cell.y + padding, imgWidth, imgHeight);
-              } catch (err) {
-                console.warn("Image error", err);
-              }
-            });
-          }
-        }
+        0: { cellWidth: 15 }, 1: { cellWidth: 20 }, 2: { cellWidth: 20 }, 3: { cellWidth: 25 },
+        4: { cellWidth: 20 }, 5: { cellWidth: 20 }, 6: { cellWidth: 25 }, 7: { cellWidth: 25 },
+        8: { cellWidth: 25 }, 9: { cellWidth: 30 }
       }
     });
 
     const finalY = doc.lastAutoTable.finalY + 15;
-    
     autoTable(doc, {
       head: [['Récapitulatif', 'Montant (DH)']],
       body: [
@@ -242,9 +187,71 @@ export const EnveloppeFinanciereView = () => {
       margin: { left: 14, right: 200 }
     });
 
-    doc.save(`Enveloppe.pdf`);
+    // --- PAGE 2+: IMAGE JUSTIFICATIFS (PROOF) ---
+    const imagesToPrint = [];
+    calculatedRows.forEach((row, index) => {
+      if (row.cimentImg) imagesToPrint.push10({ label: 'Ciment', amount: row.cimentTotal,);
+ img       : row.c }
+
+imentImg, line: index + 1 });
+      if (       row.argileImg) imagesToPrint.push({ label //: 'Argile / Faïence', amount: row.argileTotal, img: row.argileImg, line: index + 1 });
+      if (row.carburantImg) imagesToPrint.push({ label: 'Carburant', amount: parseFloat(row.carburant) || 0, img: row.carburantImg, line: index + 1 });
+      if (row.autresImg) imagesToPrint.push({ label: 'Autres', amount: parseFloat(row.autres) || 0, img: row.autresImg, line: index + 1 });
+    });
+
+    if (imagesToPrint.length > 0) {
+      doc.addPage();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("JUSTIFICATIFS DES DÉPENSES (PREUVES)", 148, 15, { align: 'center' });
+
+      // Layout config for images (2 columns x 3 rows per page = 6 images/page)
+      let x = 14;
+      let y = 30;
+      const imgWidth = 120;
+      const imgHeight = 60;
+      const marginX = 20;
+      const marginY = 15;
+      let count = 0;
+
+      imagesToPrint.forEach((item, i) => {
+        // Page break logic
+        if (count > 0 && count % 4 === 0) {
+          doc.addPage();
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(16);
+          doc.text("JUSTIFICATIFS DES DÉPENSES (SUITE)", 148, 15, { align: 'center' });
+          x = 14;
+          y = 30;
+        }
+
+        // Draw Title above each image
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 2);
+
+        // Draw Image
+        try {
+          // We draw a border around the image to make it look clean
+          doc.setDrawColor(200, 200, 200);
+          doc.rect(x, y, imgWidth, imgHeight);
+          doc.addImage(item.img, 'JPEG', x, y, imgWidth, imgHeight);
+        } catch (e) {
+          doc.text("Erreur d'affichage de l'image", x + 5, y +  Move coordinates for next image
+        if (count % 2 === 0) {
+          x += imgWidth + marginX; // Move right
+        } else {
+          x = 14; // Reset to left
+          y += imgHeight + marginY; // Move down
+        }
+        count++;
+      });
+    }
+
+    doc.save(`Enveloppe_${header.beneficiaire || 'Rapport'}.pdf`);
     toast.dismiss(loadingToast);
-    toast.success("PDF généré !");
+    toast.success("PDF généré avec succès !");
   };
 
   const inputClass = "w-full bg-slate-900/60 border border-slate-700 rounded-lg px-1 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition text-center";
@@ -252,13 +259,10 @@ export const EnveloppeFinanciereView = () => {
   const labelClass = "block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5";
   const imgButtonClass = "w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 text-[10px] py-1 rounded flex items-center justify-center gap-1 mt-1 transition";
 
-  if (loading) {
-    return <div className="p-10 flex justify-center"><Loader2 className="w-8 h-8 text-cyan-400 animate-spin" /></div>;
-  }
+  if (loading) return <div className="p-10 flex justify-center"><Loader2 className="w-8 h-8 text-cyan-400 animate-spin" /></div>;
 
   return (
     <section className="p-2 md:p-6" dir="ltr">
-      {/* Hidden File Input */}
       <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -266,8 +270,6 @@ export const EnveloppeFinanciereView = () => {
           <h2 className="text-xl md:text-2xl font-bold text-white">Enveloppe Financière</h2>
           <p className="text-sm text-slate-400 mt-1">Gérez vos dépenses et joignez les preuves.</p>
         </div>
-        
-        {/* Actions */}
         <div className="flex gap-2 w-full md:w-auto">
           <button onClick={saveData} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -275,12 +277,11 @@ export const EnveloppeFinanciereView = () => {
           </button>
           <button onClick={handleGeneratePDF} className="flex-1 md:flex-none justify-center bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2">
             <FileDown className="w-4 h-4" />
-            PDF
+            PDF Pro
           </button>
         </div>
       </div>
 
-      {/* HEADER */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -294,16 +295,15 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      {/* TABLE */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-2 md:p-4 mb-6 overflow-hidden">
         <div className="flex justify-end mb-2">
           <button onClick={addRow} className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
-            <Plus className="w-="3.5 h-3.5" /> Ajpyouter une ligne
-          </-button>
+            <Plus className="w-3.5 h-3.5" /> Ajouter une ligne
+          </button>
         </div>
 
-        <div className="1overflow-x-auto">
-          <table className px="w-full text-xs text--slate-300 min-w-[1000px]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-slate-300 min-w-[1000px]">
             <thead>
               <tr className="bg-slate-800/80 text-slate-300">
                 <th className="py-2 px-1 border border-slate-700 w-8" rowSpan={2}>N°</th>
@@ -329,7 +329,7 @@ export const EnveloppeFinanciereView = () => {
                 <th className="py-1 px-1 border border-slate-700">Img</th>
 
                 <th className="py-1 px-1 border border-slate-700">Montant</th>
-                <th className1 border border-slate-700">Img</th>
+                <th className="py-1 px-1 border border-slate-700">Img</th>
               </tr>
             </thead>
             <tbody>
@@ -381,7 +381,6 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  {/* TOTAL & DELETE */}
                   <td className="text-center font-bold text-emerald-400 border border-slate-800 bg-slate-900/30">{d.totalJour ? d.totalJour.toFixed(2) : ''}</td>
                   <td className="text-center border border-slate-800">
                     <button onClick={() => removeRow(d.id)} disabled={rows.length === 1} className="text-slate-500 hover:text-red-400 disabled:opacity-30 p-1"><Trash2 className="w-4 h-4" /></button>
@@ -389,7 +388,6 @@ export const EnveloppeFinanciereView = () => {
                 </tr>
               ))}
               
-              {/* TOTALS ROW */}
               <tr className="bg-slate-800/80 font-bold text-white border-t-2 border-cyan-500/50">
                 <td colSpan={3} className="text-center py-3 border border-slate-700">TOTAL CIMENT</td>
                 <td className="text-center text-cyan-400 border border-slate-700 bg-slate-900/30">{totals.cimentTotal.toFixed(2)}</td>
@@ -407,7 +405,6 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      {/* SUMMARY */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 max-w-sm">
         <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Récapitulatif</h3>
         <div className="space-y-2">
