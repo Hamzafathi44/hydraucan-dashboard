@@ -167,28 +167,34 @@ export const EnveloppeFinanciereView = () => {
     const alloue = parseFloat(reportHeader.montantAlloue) || 0;
     const solde = alloue - finalTotals.totalGeneral;
 
-    // --- 1. LOGO & HEADER ---
+    // --- 1. LOGO & HEADER TEXT ---
     try {
       const logoData = await toBase64('/logo-hydracane.png');
-      doc.addImage(logoData, 'PNG', 14, 10, 35, 12);
+      doc.addImage(logoData, 'PNG', 14, 10, 30, 12); // Slightly smaller logo to avoid overlaps
     } catch (e) {
       console.warn("Logo not found");
     }
 
-    // Title Centered
+    // Title (Centered, moved down slightly to avoid logo)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 20, { align: 'center' });
 
-    // Beneficiary info
+    // Info text (Left aligned)
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 35);
-    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 41);
+    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 32);
+    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 38);
+
+    // Objet text
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, 45);
 
     // --- 2. FIRST TABLE (Désignation des dépenses) ---
     autoTable(doc, {
-      startY: 48,
+      startY: 50,
       head: [['Désignation des dépenses', 'Montant (DH)']],
       body: [
         ['Ciment et matériaux', finalTotals.cimentTotal.toFixed(2)],
@@ -215,7 +221,6 @@ export const EnveloppeFinanciereView = () => {
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
-    // Add TOTAL row to the table
     tableBody.push([
       { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
       '', '', finalTotals.cimentTotal.toFixed(2),
@@ -238,7 +243,7 @@ export const EnveloppeFinanciereView = () => {
         ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
       ],
       body: tableBody,
-      startY: doc.lastAutoTable.finalY + 15, // Starts below the first table
+      startY: doc.lastAutoTable.finalY + 10,
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold', halign: 'center' },
@@ -249,7 +254,7 @@ export const EnveloppeFinanciereView = () => {
       }
     });
 
-    // --- 4. IMAGES (Page 2) ---
+    // --- 4. PROOF IMAGES (Page 2) ---
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
