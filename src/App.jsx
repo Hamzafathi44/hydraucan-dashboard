@@ -59,11 +59,12 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
         {activeView === 'srm-excel' && (
           <div className="p-4 md:p-6 max-w-4xl mx-auto">
             <SRMExcelImporter />
-      
-       {activeView === 'enveloppe' && (
-          <EnveloppeFinanciereView />
-        )}
           </div>
+        )}
+
+        {/* ✅ CORRECTED PLACEMENT: The Enveloppe block goes here, outside the srm-excel block */}
+        {activeView === 'enveloppe' && (
+          <EnveloppeFinanciereView />
         )}
 
         {activeView === 'settings' && (
