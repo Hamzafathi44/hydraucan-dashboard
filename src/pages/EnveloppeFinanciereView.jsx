@@ -15,10 +15,10 @@ export const EnveloppeFinanciereView = () => {
   const [header, setHeader] = useState({ beneficiaire: '', montantAlloue: '' });
   const [rows, setRows] = useState([]);
   
-  const fileInputRef = useRef(nullTo);
-  const [activeUpload, set({ topActiveUpload] = useState:({ rowId: null,  field: null });
+  const fileInputRef = useRef(null);
+  const [activeUpload, setActiveUpload] = useState({ rowId: null, field: null });
 
- 0 const createEmptyRow = () => ({
+  const createEmptyRow = () => ({
     id: Date.now() + Math.random(),
     date: '',
     cimentQt: '', cimentPrix: '', cimentImg: null,
@@ -41,7 +41,7 @@ export const EnveloppeFinanciereView = () => {
     setHeader(report.header);
     setRows(report.rows);
     setEditingId(report.id);
-    window.scroll, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSave = async () => {
@@ -240,7 +240,7 @@ export const EnveloppeFinanciereView = () => {
       margin: { left: 14, right: 200 }
     });
 
-    // --- 4. PROOF IMAGES (PROFESSIONAL FORMAT - NORMAL LENGTH, SMALL WEIGHT) ---
+    // --- 4. PROOF IMAGES ---
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -268,7 +268,6 @@ export const EnveloppeFinanciereView = () => {
         const col = count % 2; 
         const row = Math.floor((count % 6) / 2); 
 
-        // ✅ RESTORED LENGTH (125), SMALL WEIGHT (45)
         const boxWidth = 125; 
         const boxHeight = 45; 
         const padding = 4; 
@@ -423,7 +422,7 @@ export const EnveloppeFinanciereView = () => {
                   <td className="border border-slate-800 p-1 align-top">
                     {d.argileTotal > 0 && (
                       d.argileImg ? (
-                        <div className="relative group"><img src={d.argileImg} className="h-8 w-full object- bgcover rounded border border-slate--black600" /><button onClick={() => remove/Image(d.id, '60argileImg')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
+                        <div className="relative group"><img src={d.argileImg} className="h-8 w-full object-cover rounded border border-slate-600" /><button onClick={() => removeImage(d.id, 'argileImg')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
                       ) : <button onClick={() => triggerImageUpload(d.id, 'argileImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button>
                     )}
                   </td>
@@ -441,7 +440,7 @@ export const EnveloppeFinanciereView = () => {
                   <td className="border border-slate-800 p-1 align-top">
                     {d.autres > 0 && (
                       d.autresImg ? (
-                        <div className="relative group"><img src={d.autresImg} className="h-8 w-full object-cover rounded border border-slate-600" /><button onClick={() => removeImage(d.id, 'autresImg')} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
+                        <div className="relative group"><img src={d.autresImg} className="h-8 w-full object-cover rounded border border-slate-600" /><button onClick={() => removeImage(d.id, 'autresImg')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
                       ) : <button onClick={() => triggerImageUpload(d.id, 'autresImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button>
                     )}
                   </td>
