@@ -1,23 +1,20 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useEnveloppes } from '../hooks/useEnveloppes';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
-import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, AlertTriangle } from 'lucide-react';
-
-const DOC_ID = 'monthly_report';
+import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, AlertTriangle, Pencil, Search } from 'lucide-react';
 
 export const EnveloppeFinanciereView = () => {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { reports, loading, addReport, updateReport, deleteReport } = useEnveloppes();
   
-  const [header, setHeader] = useState({
-    beneficiaire: '',
-    montantAlloue: ''
-  });
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [search, setSearch] = useState('');
 
+  const [header, setHeader] = useState({ beneficiaire: '', montantAlloue: '' });
   const [rows, setRows] = useState([]);
+  
   const fileInputRef = useRef(null);
   const [activeUpload, setActiveUpload] = useState({ rowId: null, field: null });
 
@@ -29,55 +26,56 @@ export const EnveloppeFinanciereView = () => {
     autres: '', autresImg: null
   });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const docRef = doc(db, 'enveloppe_reports', DOC_ID);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setHeader(data.header || { beneficiaire: '', montantAlloue: '' });
-          setRows(data.rows || []);
-        } else {
-          setRows([createEmptyRow()]);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+  const resetForm = () => {
+    setHeader({ beneficiaire: '', montantAlloue: '' });
+    setRows([createEmptyRow()]);
+    setEditingId(null);
+  };
 
-  const saveData = async () => {
+  useEffect(() => {
+    if (!editingId) resetForm();
+  }, [editingId]);
+
+  const handleEditClick = (report) => {
+    setHeader(report.header);
+    setRows(report.rows);
+    setEditingId(report.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSave = async () => {
+    if (!header.beneficiaire || !header.montantAlloue) {
+      return toast.error("Veuillez remplir le bénéficiaire et le montant");
+    }
+    
     setSaving(true);
-    try {
-      const docRef = doc(db, 'enveloppe_reports', DOC_ID);
-      await setDoc(docRef, { header, rows }, { merge: true });
-      toast.success("Rapport sauvegardé !");
-    } catch (error) {
+    let result;
+    if (editingId) {
+      result = await updateReport(editingId, { header, rows });
+    } else {
+      result = await addReport({ header, rows });
+    }
+    setSaving(false);
+
+    if (result.success) {
+      toast.success(editingId ? "Rapport mis à jour !" : "Rapport sauvegardé !");
+      resetForm();
+    } else {
       toast.error("Erreur de sauvegarde");
-    } finally {
-      setSaving(false);
     }
   };
 
   const handleHeaderChange = (e) => setHeader({ ...header, [e.target.name]: e.target.value });
   const handleRowChange = (id, field, value) => setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r));
   const addRow = () => setRows([...rows, createEmptyRow()]);
-  
-  const removeRow = (id) => {
-    if (rows.length === 1) return;
-    setRows(rows.filter(r => r.id !== id));
-  };
+  const removeRow = (id) => { if (rows.length > 1) setRows(rows.filter(r => r.id !== id)); };
 
+  // Image logic (converts to JPEG via canvas to ensure PDF works)
   const triggerImageUpload = (rowId, field) => {
     setActiveUpload({ rowId, field });
     fileInputRef.current.click();
   };
 
-  // ✅ FIXED: Convert any image (HEIC/PNG/Transparent) to clean JPEG using Canvas
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file || !activeUpload.rowId || !activeUpload.field) return;
@@ -87,21 +85,14 @@ export const EnveloppeFinanciereView = () => {
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        // Draw to canvas to force a standard JPEG
         const canvas = document.createElement('canvas');
-        // Resize if too big to save database space (max 800px width)
-        const maxWidth = 800;
-        const scale = Math.min(1, maxWidth / img.width);
+        const scale = Math.min(1, 800 / img.width);
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
-        
         const ctx = canvas.getContext('2d');
-        // Fill white background (in case of PNG transparency)
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Export as compressed JPEG (0.7 quality) - This is guaranteed to work in jsPDF
         const safeBase64 = canvas.toDataURL('image/jpeg', 0.7);
         
         setRows(rows.map(r => r.id === activeUpload.rowId ? { ...r, [activeUpload.field]: safeBase64 } : r));
@@ -115,15 +106,14 @@ export const EnveloppeFinanciereView = () => {
 
   const removeImage = (rowId, field) => setRows(rows.map(r => r.id === rowId ? { ...r, [field]: null } : r));
 
+  // Calculations
   const calculatedRows = useMemo(() => {
     return rows.map((d) => {
       const cimentTotal = (parseFloat(d.cimentQt) || 0) * (parseFloat(d.cimentPrix) || 0);
       const argileTotal = (parseFloat(d.argileQt) || 0) * (parseFloat(d.argilePrix) || 0);
       const carburant = parseFloat(d.carburant) || 0;
       const autres = parseFloat(d.autres) || 0;
-      const totalLigne = cimentTotal + argileTotal + carburant + autres;
-      
-      return { ...d, cimentTotal, argileTotal, totalLigne };
+      return { ...d, cimentTotal, argileTotal, totalLigne: cimentTotal + argileTotal + carburant + autres };
     });
   }, [rows]);
 
@@ -140,6 +130,7 @@ export const EnveloppeFinanciereView = () => {
   const montantAlloue = parseFloat(header.montantAlloue) || 0;
   const soldeRestant = montantAlloue - totals.totalGeneral;
 
+  // PDF GENERATION (FIXED)
   const handleGeneratePDF = () => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
@@ -151,7 +142,7 @@ export const EnveloppeFinanciereView = () => {
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Bénéficiaire : ${header.beneficiaire || '................................'}`, 14, 25);
+    doc.text(`Bénéficiaire : ${header.beneficiaire || '........'}`, 14, 25);
     doc.text(`Montant alloué : ${montantAlloue.toFixed(2)} DH`, 14, 31);
     doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 14, 37);
 
@@ -164,10 +155,12 @@ export const EnveloppeFinanciereView = () => {
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
+    // Totals row
     tableBody.push([
-      { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
-      '', '', totals.cimentTotal.toFixed(2),
-      '', '', totals.argileTotal.toFixed(2),
+      { content: 'TOTAL', colSpan: 3, styles: { fontStyle: 'bold', halign: 'center' } },
+      totals.cimentTotal.toFixed(2),
+      { content: '', colSpan: 2 },
+      totals.argileTotal.toFixed(2),
       totals.carburant.toFixed(2),
       totals.autres.toFixed(2),
       totals.totalGeneral.toFixed(2)
@@ -198,6 +191,8 @@ export const EnveloppeFinanciereView = () => {
     });
 
     const finalY = doc.lastAutoTable.finalY + 15;
+    
+    // Summary Table
     autoTable(doc, {
       head: [['Récapitulatif', 'Montant (DH)']],
       body: [
@@ -240,7 +235,6 @@ export const EnveloppeFinanciereView = () => {
           currentY = 30;
         }
 
-        // Title
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(50, 50, 50);
@@ -249,10 +243,8 @@ export const EnveloppeFinanciereView = () => {
         try {
           doc.setDrawColor(200, 200, 200);
           doc.rect(14, currentY + 2, imgWidth, imgHeight);
-          // Add image (now guaranteed to be a clean JPEG)
           doc.addImage(item.img, 'JPEG', 14, currentY + 2, imgWidth, imgHeight);
         } catch (e) {
-          console.error("Image Error", e);
           doc.setTextColor(255, 0, 0);
           doc.text("Erreur d'affichage de l'image", 15, currentY + 10);
         }
@@ -271,6 +263,15 @@ export const EnveloppeFinanciereView = () => {
   const labelClass = "block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5";
   const imgButtonClass = "w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 text-[10px] py-1 rounded flex items-center justify-center gap-1 mt-1 transition";
 
+  const filteredReports = useMemo(() => {
+    if (!search.trim()) return reports;
+    const q = search.toLowerCase();
+    return reports.filter(r => 
+      (r.header?.beneficiaire || '').toLowerCase().includes(q) ||
+      (r.header?.montantAlloue || '').toString().includes(q)
+    );
+  }, [reports, search]);
+
   if (loading) return <div className="p-10 flex justify-center"><Loader2 className="w-8 h-8 text-cyan-400 animate-spin" /></div>;
 
   return (
@@ -279,17 +280,25 @@ export const EnveloppeFinanciereView = () => {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-white">Enveloppe Financière</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-white">
+            {editingId ? "Modifier le Rapport" : "Nouveau Rapport"}
+          </h2>
           <p className="text-sm text-slate-400 mt-1">Gérez vos dépenses et joignez les preuves.</p>
         </div>
+        
         <div className="flex gap-2 w-full md:w-auto">
-          <button onClick={saveData} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-          </button>
           <button onClick={handleGeneratePDF} className="flex-1 md:flex-none justify-center bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2">
             <FileDown className="w-4 h-4" />
-            PDF Pro
+            PDF
+          </button>
+          {editingId && (
+            <button onClick={resetForm} className="flex-1 md:flex-none justify-center bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition">
+              Annuler
+            </button>
+          )}
+          <button onClick={handleSave} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 disabled:opacity-50">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Sauvegarde...' : (editingId ? 'Mettre à jour' : 'Sauvegarder')}
           </button>
         </div>
       </div>
@@ -307,13 +316,13 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
+      {/* TABLE */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-2 md:p-4 mb-6 overflow-hidden">
         <div className="flex justify-end mb-2">
           <button onClick={addRow} className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
             <Plus className="w-3.5 h-3.5" /> Ajouter une ligne
           </button>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-slate-300 min-w-[1000px]">
             <thead>
@@ -331,12 +340,15 @@ export const EnveloppeFinanciereView = () => {
                 <th className="py-1 px-1 border border-slate-700">Prix U.</th>
                 <th className="py-1 px-1 border border-slate-700">Total</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
+
                 <th className="py-1 px-1 border border-slate-700">Qt</th>
                 <th className="py-1 px-1 border border-slate-700">Prix U.</th>
                 <th className="py-1 px-1 border border-slate-700">Total</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
+
                 <th className="py-1 px-1 border border-slate-700">Montant</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
+
                 <th className="py-1 px-1 border border-slate-700">Montant</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
               </tr>
@@ -346,6 +358,7 @@ export const EnveloppeFinanciereView = () => {
                 <tr key={d.id} className="hover:bg-white/5 border-b border-slate-800">
                   <td className="text-center font-bold text-slate-400 border border-slate-800">{i + 1}</td>
                   
+                  {/* Ciment */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentQt} onChange={(e) => handleRowChange(d.id, 'cimentQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentPrix} onChange={(e) => handleRowChange(d.id, 'cimentPrix', e.target.value)} className={inputClass} /></td>
                   <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.cimentTotal ? d.cimentTotal.toFixed(2) : ''}</td>
@@ -357,6 +370,7 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
+                  {/* Argile */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argileQt} onChange={(e) => handleRowChange(d.id, 'argileQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argilePrix} onChange={(e) => handleRowChange(d.id, 'argilePrix', e.target.value)} className={inputClass} /></td>
                   <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.argileTotal ? d.argileTotal.toFixed(2) : ''}</td>
@@ -368,6 +382,7 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
+                  {/* Carburant */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.carburant} onChange={(e) => handleRowChange(d.id, 'carburant', e.target.value)} className={inputClass} /></td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.carburant > 0 && (
@@ -377,6 +392,7 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
+                  {/* Autres */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.autres} onChange={(e) => handleRowChange(d.id, 'autres', e.target.value)} className={inputClass} /></td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.autres > 0 && (
@@ -410,7 +426,8 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 max-w-sm">
+      {/* SUMMARY */}
+      <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 max-w-sm mb-10">
         <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Récapitulatif</h3>
         <div className="space-y-2">
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-1">
@@ -429,6 +446,74 @@ export const EnveloppeFinanciereView = () => {
             <span className="font-mono font-bold text-lg">{soldeRestant.toFixed(2)} DH</span>
           </div>
         </div>
+      </div>
+
+      {/* SAVED REPORTS LIST (Like Refection) */}
+      <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+              <Wallet className="w-4 h-4 text-cyan-400" />
+            </div>
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Rapports Sauvegardés ({filteredReports.length})
+            </h3>
+          </div>
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="w-full sm:w-64 bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition" />
+          </div>
+        </div>
+
+        {filteredReports.length === 0 ? (
+          <p className="text-center text-slate-500 py-10 text-sm">Aucun rapport sauvegardé</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-slate-300">
+              <thead>
+                <tr className="border-b border-slate-700 text-slate-400 uppercase tracking-wider text-[10px]">
+                  <th className="text-left py-2 px-2">Bénéficiaire</th>
+                  <th className="text-center py-2 px-2">Montant Alloué</th>
+                  <th className="text-center py-2 px-2">Dépensé</th>
+                  <th className="text-center py-2 px-2">Solde</th>
+                  <th className="text-center py-2 px-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredReports.map((r) => {
+                  const totDepense = r.rows.reduce((sum, row) => {
+                    const ciment = (parseFloat(row.cimentQt) || 0) * (parseFloat(row.cimentPrix) || 0);
+                    const argile = (parseFloat(row.argileQt) || 0) * (parseFloat(row.argilePrix) || 0);
+                    const carb = parseFloat(row.carburant) || 0;
+                    const aut = parseFloat(row.autres) || 0;
+                    return sum + ciment + argile + carb + aut;
+                  }, 0);
+                  const alloue = parseFloat(r.header.montantAlloue) || 0;
+                  const solde = alloue - totDepense;
+
+                  return (
+                    <tr key={r.id} className="border-b border-slate-800 hover:bg-white/5">
+                      <td className="py-2 px-2">{r.header.beneficiaire || 'Sans nom'}</td>
+                      <td className="text-center py-2 px-2 font-mono text-slate-300">{alloue.toFixed(2)}</td>
+                      <td className="text-center py-2 px-2 font-mono text-cyan-400">{totDepense.toFixed(2)}</td>
+                      <td className={`text-center py-2 px-2 font-mono font-bold ${solde < 0 ? 'text-red-400' : 'text-emerald-400'}`}>{solde.toFixed(2)}</td>
+                      <td className="text-center py-2 px-2">
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => handleEditClick(r)} className="text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg p-1.5 transition" title="Edit">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => deleteReport(r.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-1.5 transition" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );
