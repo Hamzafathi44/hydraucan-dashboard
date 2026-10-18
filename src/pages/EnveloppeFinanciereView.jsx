@@ -128,12 +128,10 @@ export const EnveloppeFinanciereView = () => {
   const montantAlloue = parseFloat(header.montantAlloue) || 0;
   const soldeRestant = montantAlloue - totals.totalGeneral;
 
-  // ✅ REUSABLE PDF GENERATOR FUNCTION
   const downloadPDF = (reportHeader, reportRows) => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
 
-    // Calculate totals just in case it's from the saved list
     const processedRows = reportRows.map(r => {
       const cimentTotal = (parseFloat(r.cimentQt) || 0) * (parseFloat(r.cimentPrix) || 0);
       const argileTotal = (parseFloat(r.argileQt) || 0) * (parseFloat(r.argilePrix) || 0);
@@ -153,7 +151,6 @@ export const EnveloppeFinanciereView = () => {
     const alloue = parseFloat(reportHeader.montantAlloue) || 0;
     const solde = alloue - finalTotals.totalGeneral;
 
-    // --- PAGE 1: MAIN TABLE ---
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
     doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 15, { align: 'center' });
@@ -164,6 +161,7 @@ export const EnveloppeFinanciereView = () => {
     doc.text(`Montant alloué : ${alloue.toFixed(2)} DH`, 14, 31);
     doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 14, 37);
 
+    // ONLY the rows, no totals row in the PDF
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
@@ -171,15 +169,6 @@ export const EnveloppeFinanciereView = () => {
       d.carburant,
       d.autres,
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
-    ]);
-
-    tableBody.push([
-      { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
-      '', '', finalTotals.cimentTotal.toFixed(2),
-      '', '', finalTotals.argileTotal.toFixed(2),
-      finalTotals.carburant.toFixed(2),
-      finalTotals.autres.toFixed(2),
-      finalTotals.totalGeneral.toFixed(2)
     ]);
 
     autoTable(doc, {
@@ -208,6 +197,7 @@ export const EnveloppeFinanciereView = () => {
 
     const finalY = doc.lastAutoTable.finalY + 15;
     
+    // ONLY TOTAL HERE IN PDF
     autoTable(doc, {
       head: [['Récapitulatif', 'Montant (DH)']],
       body: [
@@ -222,7 +212,7 @@ export const EnveloppeFinanciereView = () => {
       margin: { left: 14, right: 200 }
     });
 
-    // --- PAGE 2+: PROOF IMAGES ---
+    // PAGE 2: IMAGES
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -418,19 +408,6 @@ export const EnveloppeFinanciereView = () => {
                   </td>
                 </tr>
               ))}
-              
-              <tr className="bg-slate-800/80 font-bold text-white border-t-2 border-cyan-500/50">
-                <td colSpan={3} className="text-center py-3 border border-slate-700">TOTAL CIMENT</td>
-                <td className="text-center text-cyan-400 border border-slate-700 bg-slate-900/30">{totals.cimentTotal.toFixed(2)}</td>
-                <td colSpan={4} className="text-center py-3 border border-slate-700">TOTAL ARGILE</td>
-                <td className="text-center text-cyan-400 border border-slate-700 bg-slate-900/30">{totals.argileTotal.toFixed(2)}</td>
-                <td colSpan={2} className="text-center py-3 border border-slate-700">TOTAL CARBURANT</td>
-                <td className="text-center text-cyan-400 border border-slate-700 bg-slate-900/30">{totals.carburant.toFixed(2)}</td>
-                <td colSpan={2} className="text-center py-3 border border-slate-700">TOTAL AUTRES</td>
-                <td className="text-center text-cyan-400 border border-slate-700 bg-slate-900/30">{totals.autres.toFixed(2)}</td>
-                <td className="text-center text-emerald-400 text-sm border border-slate-700">{totals.totalGeneral.toFixed(2)}</td>
-                <td className="border border-slate-700"></td>
-              </tr>
             </tbody>
           </table>
         </div>
@@ -457,7 +434,6 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      {/* ✅ SAVED REPORTS LIST WITH PDF DOWNLOAD */}
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
@@ -508,7 +484,6 @@ export const EnveloppeFinanciereView = () => {
                       <td className={`text-center py-2 px-2 font-mono font-bold ${solde < 0 ? 'text-red-400' : 'text-emerald-400'}`}>{solde.toFixed(2)}</td>
                       <td className="text-center py-2 px-2">
                         <div className="flex items-center justify-center gap-2">
-                          {/* ✅ DOWNLOAD PDF FROM SAVED */}
                           <button onClick={() => downloadPDF(r.header, r.rows)} className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg p-1.5 transition" title="Télécharger PDF">
                             <FileDown className="w-3.5 h-3.5" />
                           </button>
