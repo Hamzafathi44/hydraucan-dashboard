@@ -20,6 +20,7 @@ import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
 import { StatisticsView } from './pages/StatisticsView';
 import { PointageView } from './pages/PointageView';
 import { RefectionView } from './pages/RefectionView';
+import { EnveloppeFinanciereView } from './pages/EnveloppeFinanciereView';
 
 // استيراد مكون استيراد الإكسل الجديد
 import SRMExcelImporter from './components/SRMExcelImporter';
@@ -58,6 +59,10 @@ const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
         {activeView === 'srm-excel' && (
           <div className="p-4 md:p-6 max-w-4xl mx-auto">
             <SRMExcelImporter />
+      
+       {activeView === 'enveloppe' && (
+          <EnveloppeFinanciereView />
+        )}
           </div>
         )}
 
