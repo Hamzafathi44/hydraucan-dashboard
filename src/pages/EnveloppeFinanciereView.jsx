@@ -21,7 +21,14 @@ export const EnveloppeFinanciereView = () => {
   const fileInputRef = useRef(null);
   const [activeUpload, setActiveUpload] = useState({ rowId: null, field: null });
 
-  // Load Data
+  const createEmptyRow = () => ({
+    id: Date.now() + Math.random(),
+    cimentQt: '', cimentPrix: '', cimentImg: null,
+    argileQt: '', argilePrix: '', argileImg: null,
+    carburant: '', carburantImg: null,
+    autres: '', autresImg: null
+  });
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -32,7 +39,7 @@ export const EnveloppeFinanciereView = () => {
           setHeader(data.header || { beneficiaire: '', montantAlloue: '' });
           setRows(data.rows || []);
         } else {
-          setRows([{ id: Date.now(), cimentQt: '', cimentPrix: '', cimentImg: null, argileQt: '', argilePrix: '', argileImg: null, carburant: '', carburantImg: null, autres: '', autresImg: null }]);
+          setRows([createEmptyRow()]);
         }
       } catch (error) {
         console.error(error);
@@ -58,31 +65,49 @@ export const EnveloppeFinanciereView = () => {
 
   const handleHeaderChange = (e) => setHeader({ ...header, [e.target.name]: e.target.value });
   const handleRowChange = (id, field, value) => setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r));
+  const addRow = () => setRows([...rows, createEmptyRow()]);
   
-  const addRow = () => {
-    setRows([...rows, { id: Date.now(), cimentQt: '', cimentPrix: '', cimentImg: null, argileQt: '', argilePrix: '', argileImg: null, carburant: '', carburantImg: null, autres: '', autresImg: null }]);
-  };
-
   const removeRow = (id) => {
     if (rows.length === 1) return;
     setRows(rows.filter(r => r.id !== id));
   };
 
-  // Image logic
   const triggerImageUpload = (rowId, field) => {
     setActiveUpload({ rowId, field });
     fileInputRef.current.click();
   };
 
+  // ✅ FIXED: Convert any image (HEIC/PNG/Transparent) to clean JPEG using Canvas
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file || !activeUpload.rowId || !activeUpload.field) return;
-    if (file.size > 1.5 * 1024 * 1024) return toast.error("Image trop lourde (max 1.5MB)");
+    if (file.size > 2 * 1024 * 1024) return toast.error("Image trop lourde (max 2MB)");
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      setRows(rows.map(r => r.id === activeUpload.rowId ? { ...r, [activeUpload.field]: event.target.result } : r));
-      toast.success("Preuve ajoutée");
+      const img = new Image();
+      img.onload = () => {
+        // Draw to canvas to force a standard JPEG
+        const canvas = document.createElement('canvas');
+        // Resize if too big to save database space (max 800px width)
+        const maxWidth = 800;
+        const scale = Math.min(1, maxWidth / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        
+        const ctx = canvas.getContext('2d');
+        // Fill white background (in case of PNG transparency)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Export as compressed JPEG (0.7 quality) - This is guaranteed to work in jsPDF
+        const safeBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        
+        setRows(rows.map(r => r.id === activeUpload.rowId ? { ...r, [activeUpload.field]: safeBase64 } : r));
+        toast.success("Preuve ajoutée");
+      };
+      img.src = event.target.result;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -90,14 +115,15 @@ export const EnveloppeFinanciereView = () => {
 
   const removeImage = (rowId, field) => setRows(rows.map(r => r.id === rowId ? { ...r, [field]: null } : r));
 
-  // Calculations
   const calculatedRows = useMemo(() => {
     return rows.map((d) => {
       const cimentTotal = (parseFloat(d.cimentQt) || 0) * (parseFloat(d.cimentPrix) || 0);
       const argileTotal = (parseFloat(d.argileQt) || 0) * (parseFloat(d.argilePrix) || 0);
       const carburant = parseFloat(d.carburant) || 0;
       const autres = parseFloat(d.autres) || 0;
-      return { ...d, cimentTotal, argileTotal, totalJour: cimentTotal + argileTotal + carburant + autres };
+      const totalLigne = cimentTotal + argileTotal + carburant + autres;
+      
+      return { ...d, cimentTotal, argileTotal, totalLigne };
     });
   }, [rows]);
 
@@ -107,14 +133,13 @@ export const EnveloppeFinanciereView = () => {
       argileTotal: acc.argileTotal + curr.argileTotal,
       carburant: acc.carburant + (parseFloat(curr.carburant) || 0),
       autres: acc.autres + (parseFloat(curr.autres) || 0),
-      totalJour: acc.totalJour + curr.totalJour,
-    }), { cimentTotal: 0, argileTotal: 0, carburant: 0, autres: 0, totalJour: 0 });
+      totalGeneral: acc.totalGeneral + curr.totalLigne,
+    }), { cimentTotal: 0, argileTotal: 0, carburant: 0, autres: 0, totalGeneral: 0 });
   }, [calculatedRows]);
 
   const montantAlloue = parseFloat(header.montantAlloue) || 0;
-  const soldeRestant = montantAlloue - totals.totalJour;
+  const soldeRestant = montantAlloue - totals.totalGeneral;
 
-  // PDF GENERATION
   const handleGeneratePDF = () => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
@@ -128,7 +153,7 @@ export const EnveloppeFinanciereView = () => {
     doc.setFont("helvetica", "normal");
     doc.text(`Bénéficiaire : ${header.beneficiaire || '................................'}`, 14, 25);
     doc.text(`Montant alloué : ${montantAlloue.toFixed(2)} DH`, 14, 31);
-    doc.text(`Date d'impression : ${new Date().toLocaleDateString('fr-FR')}`, 14, 37);
+    doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 14, 37);
 
     const tableBody = calculatedRows.map((d, index) => [
       index + 1,
@@ -136,7 +161,7 @@ export const EnveloppeFinanciereView = () => {
       d.argileQt, d.argilePrix, d.argileTotal ? d.argileTotal.toFixed(2) : '',
       d.carburant,
       d.autres,
-      d.totalJour ? d.totalJour.toFixed(2) : ''
+      d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
     tableBody.push([
@@ -145,7 +170,7 @@ export const EnveloppeFinanciereView = () => {
       '', '', totals.argileTotal.toFixed(2),
       totals.carburant.toFixed(2),
       totals.autres.toFixed(2),
-      totals.totalJour.toFixed(2)
+      totals.totalGeneral.toFixed(2)
     ]);
 
     autoTable(doc, {
@@ -177,7 +202,7 @@ export const EnveloppeFinanciereView = () => {
       head: [['Récapitulatif', 'Montant (DH)']],
       body: [
         ['Montant alloué', montantAlloue.toFixed(2)],
-        ['Total dépensé', totals.totalJour.toFixed(2)],
+        ['Total dépensé', totals.totalGeneral.toFixed(2)],
         ['Solde restant', soldeRestant.toFixed(2)]
       ],
       startY: finalY,
@@ -190,18 +215,10 @@ export const EnveloppeFinanciereView = () => {
     // --- PAGE 2+: PROOF IMAGES ---
     const imagesToPrint = [];
     calculatedRows.forEach((row, index) => {
-      if (row.cimentImg) {
-        imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
-      }
-      if (row.argileImg) {
-        imagesToPrint.push({ label: 'Argile / Faïence', amount: row.argileTotal, img: row.argileImg, line: index + 1 });
-      }
-      if (row.carburantImg) {
-        imagesToPrint.push({ label: 'Carburant', amount: parseFloat(row.carburant) || 0, img: row.carburantImg, line: index + 1 });
-      }
-      if (row.autresImg) {
-        imagesToPrint.push({ label: 'Autres', amount: parseFloat(row.autres) || 0, img: row.autresImg, line: index + 1 });
-      }
+      if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
+      if (row.argileImg) imagesToPrint.push({ label: 'Argile / Faïence', amount: row.argileTotal, img: row.argileImg, line: index + 1 });
+      if (row.carburantImg) imagesToPrint.push({ label: 'Carburant', amount: parseFloat(row.carburant) || 0, img: row.carburantImg, line: index + 1 });
+      if (row.autresImg) imagesToPrint.push({ label: 'Autres', amount: parseFloat(row.autres) || 0, img: row.autresImg, line: index + 1 });
     });
 
     if (imagesToPrint.length > 0) {
@@ -210,44 +227,37 @@ export const EnveloppeFinanciereView = () => {
       doc.setFontSize(16);
       doc.text("JUSTIFICATIFS DES DÉPENSES (PREUVES)", 148, 15, { align: 'center' });
 
-      let x = 14;
-      let y = 30;
-      const imgWidth = 120;
-      const imgHeight = 60;
-      const marginX = 20;
-      const marginY = 15;
-      let count = 0;
+      let currentY = 30;
+      const imgWidth = 80;
+      const imgHeight = 55;
 
       imagesToPrint.forEach((item) => {
-        if (count > 0 && count % 4 === 0) {
+        if (currentY + imgHeight + 20 > 200) {
           doc.addPage();
           doc.setFont("helvetica", "bold");
           doc.setFontSize(16);
           doc.text("JUSTIFICATIFS DES DÉPENSES (SUITE)", 148, 15, { align: 'center' });
-          x = 14;
-          y = 30;
+          currentY = 30;
         }
 
+        // Title
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(50, 50, 50);
-        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 2);
+        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, 14, currentY);
 
         try {
           doc.setDrawColor(200, 200, 200);
-          doc.rect(x, y, imgWidth, imgHeight);
-          doc.addImage(item.img, 'JPEG', x, y, imgWidth, imgHeight);
+          doc.rect(14, currentY + 2, imgWidth, imgHeight);
+          // Add image (now guaranteed to be a clean JPEG)
+          doc.addImage(item.img, 'JPEG', 14, currentY + 2, imgWidth, imgHeight);
         } catch (e) {
-          doc.text("Erreur d'affichage de l'image", x + 5, y + 10);
+          console.error("Image Error", e);
+          doc.setTextColor(255, 0, 0);
+          doc.text("Erreur d'affichage de l'image", 15, currentY + 10);
         }
 
-        if (count % 2 === 0) {
-          x += imgWidth + marginX;
-        } else {
-          x = 14;
-          y += imgHeight + marginY;
-        }
-        count++;
+        currentY += imgHeight + 15;
       });
     }
 
@@ -321,15 +331,12 @@ export const EnveloppeFinanciereView = () => {
                 <th className="py-1 px-1 border border-slate-700">Prix U.</th>
                 <th className="py-1 px-1 border border-slate-700">Total</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
-
                 <th className="py-1 px-1 border border-slate-700">Qt</th>
                 <th className="py-1 px-1 border border-slate-700">Prix U.</th>
                 <th className="py-1 px-1 border border-slate-700">Total</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
-
                 <th className="py-1 px-1 border border-slate-700">Montant</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
-
                 <th className="py-1 px-1 border border-slate-700">Montant</th>
                 <th className="py-1 px-1 border border-slate-700">Img</th>
               </tr>
@@ -339,7 +346,6 @@ export const EnveloppeFinanciereView = () => {
                 <tr key={d.id} className="hover:bg-white/5 border-b border-slate-800">
                   <td className="text-center font-bold text-slate-400 border border-slate-800">{i + 1}</td>
                   
-                  {/* CIMENT */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentQt} onChange={(e) => handleRowChange(d.id, 'cimentQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentPrix} onChange={(e) => handleRowChange(d.id, 'cimentPrix', e.target.value)} className={inputClass} /></td>
                   <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.cimentTotal ? d.cimentTotal.toFixed(2) : ''}</td>
@@ -351,7 +357,6 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  {/* ARGILE */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argileQt} onChange={(e) => handleRowChange(d.id, 'argileQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argilePrix} onChange={(e) => handleRowChange(d.id, 'argilePrix', e.target.value)} className={inputClass} /></td>
                   <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.argileTotal ? d.argileTotal.toFixed(2) : ''}</td>
@@ -363,7 +368,6 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  {/* CARBURANT */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.carburant} onChange={(e) => handleRowChange(d.id, 'carburant', e.target.value)} className={inputClass} /></td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.carburant > 0 && (
@@ -373,7 +377,6 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  {/* AUTRES */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.autres} onChange={(e) => handleRowChange(d.id, 'autres', e.target.value)} className={inputClass} /></td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.autres > 0 && (
@@ -383,7 +386,7 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  <td className="text-center font-bold text-emerald-400 border border-slate-800 bg-slate-900/30">{d.totalJour ? d.totalJour.toFixed(2) : ''}</td>
+                  <td className="text-center font-bold text-emerald-400 border border-slate-800 bg-slate-900/30">{d.totalLigne ? d.totalLigne.toFixed(2) : ''}</td>
                   <td className="text-center border border-slate-800">
                     <button onClick={() => removeRow(d.id)} disabled={rows.length === 1} className="text-slate-500 hover:text-red-400 disabled:opacity-30 p-1"><Trash2 className="w-4 h-4" /></button>
                   </td>
@@ -399,7 +402,7 @@ export const EnveloppeFinanciereView = () => {
                 <td className="text-center text-cyan-400 border border-slate-700 bg-slate-900/30">{totals.carburant.toFixed(2)}</td>
                 <td colSpan={2} className="text-center py-3 border border-slate-700">TOTAL AUTRES</td>
                 <td className="text-center text-cyan-400 border border-slate-700 bg-slate-900/30">{totals.autres.toFixed(2)}</td>
-                <td className="text-center text-emerald-400 text-sm border border-slate-700">{totals.totalJour.toFixed(2)}</td>
+                <td className="text-center text-emerald-400 text-sm border border-slate-700">{totals.totalGeneral.toFixed(2)}</td>
                 <td className="border border-slate-700"></td>
               </tr>
             </tbody>
@@ -416,7 +419,7 @@ export const EnveloppeFinanciereView = () => {
           </div>
           <div className="flex justify-between items-center border-b border-slate-700/50 pb-1">
             <span className="text-xs text-slate-400">Total dépensé</span>
-            <span className="font-mono font-bold text-cyan-400 text-sm">{totals.totalJour.toFixed(2)} DH</span>
+            <span className="font-mono font-bold text-cyan-400 text-sm">{totals.totalGeneral.toFixed(2)} DH</span>
           </div>
           <div className={`flex justify-between items-center pt-2 ${soldeRestant < 0 ? 'text-red-500' : soldeRestant === 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
             <span className="text-xs font-bold flex items-center gap-1">
