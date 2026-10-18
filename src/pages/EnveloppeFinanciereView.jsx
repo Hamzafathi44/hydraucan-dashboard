@@ -12,7 +12,8 @@ export const EnveloppeFinanciereView = () => {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
 
-  const [header, setHeader] = useState({ beneficiaire: '', montantAlloue: '', date: '' });
+  // ✅ DATE REMOVED from header
+  const [header, setHeader] = useState({ beneficiaire: '', montantAlloue: '' });
   const [rows, setRows] = useState([]);
   
   const fileInputRef = useRef(null);
@@ -27,7 +28,7 @@ export const EnveloppeFinanciereView = () => {
   });
 
   const resetForm = () => {
-    setHeader({ beneficiaire: '', montantAlloue: '', date: '' });
+    setHeader({ beneficiaire: '', montantAlloue: '' });
     setRows([createEmptyRow()]);
     setEditingId(null);
   };
@@ -128,6 +129,22 @@ export const EnveloppeFinanciereView = () => {
   const montantAlloue = parseFloat(header.montantAlloue) || 0;
   const soldeRestant = montantAlloue - totals.totalGeneral;
 
+  const toBase64 = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  };
+
   const downloadPDF = async (reportHeader, reportRows) => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
@@ -150,9 +167,8 @@ export const EnveloppeFinanciereView = () => {
 
     const alloue = parseFloat(reportHeader.montantAlloue) || 0;
     const solde = alloue - finalTotals.totalGeneral;
-    const dateStr = reportHeader.date || '..../..../........';
 
-    // --- HEADER ---
+    // LOGO
     try {
       const logoData = await toBase64('/logo-hydracane.png');
       doc.addImage(logoData, 'PNG', 14, 10, 35, 12);
@@ -160,28 +176,28 @@ export const EnveloppeFinanciereView = () => {
       console.warn("Logo not found");
     }
 
+    // HEADER TEXT (No date)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 15, { align: 'center' });
+    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 14, 30);
 
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Date : ${dateStr}`, 14, 30);
-    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 36);
-    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 42);
-
+    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 38);
+    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 44);
+    
     doc.setFont("helvetica", "italic");
-    doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, 49);
+    doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, 51);
 
-    // --- DÉSIGNATION DES DÉPENSES TABLE ---
+    // SUMMARY TABLE
     autoTable(doc, {
-      startY: 53,
+      startY: 56,
       head: [['Désignation des dépenses', 'Montant (DH)']],
       body: [
         ['Ciment et matériaux', finalTotals.cimentTotal.toFixed(2)],
-        ['Salaires', '0.00'], // Placeholder, not in form yet
+        ['Salaires', '0.00'],
         ['Gasoil', finalTotals.carburant.toFixed(2)],
-        ['Entretien et réparations', '0.00'], // Placeholder
+        ['Entretien et réparations', '0.00'],
         ['Autres dépenses', finalTotals.autres.toFixed(2)],
         ['Total des dépenses', finalTotals.totalGeneral.toFixed(2)],
         ['Reste disponible', solde.toFixed(2)],
@@ -189,10 +205,10 @@ export const EnveloppeFinanciereView = () => {
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2 },
       headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
-      margin: { left: 14, right: 200 } // Keep it left aligned
+      margin: { left: 14, right: 200 }
     });
 
-    // --- DETAILED TABLE ---
+    // DETAILED TABLE
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
@@ -226,7 +242,7 @@ export const EnveloppeFinanciereView = () => {
       }
     });
 
-    // --- PAGE 2: IMAGES ---
+    // PROOF IMAGES
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -277,23 +293,6 @@ export const EnveloppeFinanciereView = () => {
     toast.success("PDF généré avec succès !");
   };
 
-  // Helper for logo base64
-  const toBase64 = (url) => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = reject;
-      img.src = url;
-    });
-  };
-
   const inputClass = "w-full bg-slate-900/60 border border-slate-700 rounded-lg px-1 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition text-center";
   const inputHeaderClass = "w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition";
   const labelClass = "block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5";
@@ -339,12 +338,9 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
+      {/* ✅ DATE FIELD REMOVED FROM UI */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className={labelClass}>Date</label>
-            <input name="date" type="date" value={header.date} onChange={handleHeaderChange} className={inputHeaderClass} />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Bénéficiaire</label>
             <input name="beneficiaire" value={header.beneficiaire} onChange={handleHeaderChange} placeholder="Nom" className={inputHeaderClass} />
