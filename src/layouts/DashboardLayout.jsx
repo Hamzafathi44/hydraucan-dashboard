@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { 
-  Menu, X, LayoutDashboard, FileText, Settings, LogOut, Droplets, PieChart, Clock, FileSpreadsheet, Wrench, wallet
+  Menu, X, LayoutDashboard, FileText, Settings, LogOut, Droplets, PieChart, Clock, FileSpreadsheet, Wrench, Wallet
 } from 'lucide-react';
 
 export const DashboardLayout = ({ children, activeView, setActiveView }) => {
@@ -60,7 +60,6 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             RAPPORT MENSUEL
           </button>
 
-          {/* 🔽 NEW : REFECTION WORKS 🔽 */}
           <button 
             onClick={() => { setActiveView('refection'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'refection' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
@@ -85,7 +84,6 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             Fichier EXPLOITATION EAU
           </button>
 
-          {/* الزر الجديد لاستيراد Excel */}
           <button 
             onClick={() => { setActiveView('srm-excel'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'srm-excel' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
@@ -94,7 +92,7 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             IMPORT EXCEL SRM
           </button>
         
-            <button 
+          <button 
             onClick={() => { setActiveView('enveloppe'); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'enveloppe' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
           >
