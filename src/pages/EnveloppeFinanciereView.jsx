@@ -12,14 +12,17 @@ export const EnveloppeFinanciereView = () => {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
 
+  // ✅ Date removed from header
   const [header, setHeader] = useState({ beneficiaire: '', montantAlloue: '' });
   const [rows, setRows] = useState([]);
   
   const fileInputRef = useRef(null);
   const [activeUpload, setActiveUpload] = useState({ rowId: null, field: null });
 
+  // ✅ Date added to the row
   const createEmptyRow = () => ({
     id: Date.now() + Math.random(),
+    date: '',
     cimentQt: '', cimentPrix: '', cimentImg: null,
     argileQt: '', argilePrix: '', argileImg: null,
     carburant: '', carburantImg: null,
@@ -175,23 +178,28 @@ export const EnveloppeFinanciereView = () => {
       console.warn("Logo not found");
     }
 
+    // Title (Centered)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 105, 18, { align: 'center' });
+    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 20, { align: 'center' });
 
+    // Info text
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 32);
     doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 38);
 
+    // Objet text
     doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
     doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, 45);
 
     // --- 2. MAIN TABLE ---
+    // ✅ Added 'Date' to the table body
     const tableBody = processedRows.map((d, index) => [
       index + 1,
+      d.date || '',
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
       d.argileQt, d.argilePrix, d.argileTotal ? d.argileTotal.toFixed(2) : '',
       d.carburant,
@@ -199,22 +207,25 @@ export const EnveloppeFinanciereView = () => {
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
-    // Perfectly aligned TOTAL row
+    // ✅ PERFECTLY ALIGNED TOTAL ROW (covers 11 columns: 0=N°, 1=Date, 2=C.Qt, 3=C.Prix, 4=C.Tot, 5=A.Qt, 6=A.Prix, 7=A.Tot, 8=Carb, 9=Aut, 10=Tot)
     tableBody.push([
-      { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } }, // Spans Col 0 & 1
-      '', // Col 2 (empty)
-      finalTotals.cimentTotal.toFixed(2), // Col 3
-      '', '', // Col 4 & 5 (empty)
-      finalTotals.argileTotal.toFixed(2), // Col 6
-      finalTotals.carburant.toFixed(2), // Col 7
-      finalTotals.autres.toFixed(2), // Col 8
-      finalTotals.totalGeneral.toFixed(2) // Col 9
+      { content: 'TOTAL', colSpan: 3, styles: { fontStyle: 'bold', halign: 'center' } },
+      '', // Ciment Qt
+      '', // Ciment Prix
+      finalTotals.cimentTotal.toFixed(2), // Ciment Total
+      '', // Argile Qt
+      '', // Argile Prix
+      finalTotals.argileTotal.toFixed(2), // Argile Total
+      finalTotals.carburant.toFixed(2),
+      finalTotals.autres.toFixed(2),
+      finalTotals.totalGeneral.toFixed(2)
     ]);
 
     autoTable(doc, {
       head: [
         [
           { content: 'N°', rowSpan: 2 },
+          { content: 'Date', rowSpan: 2 }, // ✅ NEW DATE COLUMN
           { content: 'Ciment', colSpan: 3, styles: { halign: 'center' } },
           { content: 'Argile / Faïence', colSpan: 3, styles: { halign: 'center' } },
           { content: 'Carburant', rowSpan: 2 },
@@ -224,14 +235,18 @@ export const EnveloppeFinanciereView = () => {
         ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
       ],
       body: tableBody,
-      startY: 50,
+      startY: 52,
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold', halign: 'center' },
       columnStyles: {
-        0: { cellWidth: 15 }, 1: { cellWidth: 20 }, 2: { cellWidth: 20 }, 3: { cellWidth: 25 },
-        4: { cellWidth: 20 }, 5: { cellWidth: 20 }, 6: { cellWidth: 25 }, 7: { cellWidth: 25 },
-        8: { cellWidth: 25 }, 9: { cellWidth: 30 }
+        0: { cellWidth: 10 },  // N°
+        1: { cellWidth: 22 },  // Date
+        2: { cellWidth: 15 }, 3: { cellWidth: 15 }, 4: { cellWidth: 20 }, // Ciment
+        5: { cellWidth: 15 }, 6: { cellWidth: 15 }, 7: { cellWidth: 20 }, // Argile
+        8: { cellWidth: 20 },  // Carburant
+        9: { cellWidth: 20 },  // Autres
+        10: { cellWidth: 25 }  // Total
       }
     });
 
@@ -280,8 +295,8 @@ export const EnveloppeFinanciereView = () => {
         const col = count % 2; // 0 for left, 1 for right
         const row = Math.floor((count % 6) / 2); // 0, 1, 2
 
-        const x = col === 0 ? 14 : 144; // 144 = 14 + 110 + 20 margin
-        const y = 30 + (row * 60); 
+        const x = col === 0 ? 14 : 148; 
+        const y = 30 + (row * 70); 
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
@@ -290,8 +305,8 @@ export const EnveloppeFinanciereView = () => {
 
         try {
           doc.setDrawColor(200, 200, 200);
-          doc.rect(x, y, 110, 45);
-          doc.addImage(item.img, 'JPEG', x, y, 110, 45);
+          doc.rect(x, y, 135, 60); 
+          doc.addImage(item.img, 'JPEG', x, y, 135, 60);
         } catch (e) {
           doc.setTextColor(255, 0, 0);
           doc.text("Erreur d'affichage de l'image", x + 2, y + 10);
@@ -351,6 +366,7 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
+      {/* HEADER FORM (No Date) */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -371,10 +387,11 @@ export const EnveloppeFinanciereView = () => {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-slate-300 min-w-[1000px]">
+          <table className="w-full text-xs text-slate-300 min-w-[1100px]">
             <thead>
               <tr className="bg-slate-800/80 text-slate-300">
                 <th className="py-2 px-1 border border-slate-700 w-8" rowSpan={2}>N°</th>
+                <th className="py-2 px-1 border border-slate-700 w-24" rowSpan={2}>Date</th> {/* ✅ NEW DATE COLUMN */}
                 <th className="py-1 border border-slate-700" colSpan={4}>Ciment</th>
                 <th className="py-1 border border-slate-700" colSpan={4}>Argile / Faïence</th>
                 <th className="py-1 border border-slate-700" colSpan={2}>Carburant</th>
@@ -404,6 +421,7 @@ export const EnveloppeFinanciereView = () => {
               {calculatedRows.map((d, i) => (
                 <tr key={d.id} className="hover:bg-white/5 border-b border-slate-800">
                   <td className="text-center font-bold text-slate-400 border border-slate-800">{i + 1}</td>
+                  <td className="p-1 border border-slate-800"><input type="date" value={d.date} onChange={(e) => handleRowChange(d.id, 'date', e.target.value)} className={inputClass} /></td> {/* ✅ DATE INPUT IN ROW */}
                   
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentQt} onChange={(e) => handleRowChange(d.id, 'cimentQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentPrix} onChange={(e) => handleRowChange(d.id, 'cimentPrix', e.target.value)} className={inputClass} /></td>
@@ -497,13 +515,13 @@ export const EnveloppeFinanciereView = () => {
           <p className="text-center text-slate-500 py-10 text-sm">Aucun rapport sauvegardé</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-slate-300">
+            <table className="w-full text-xs text-slate- py300">
               <thead>
-                <tr className="border-b border-slate-700 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="text-left py-2 px-2">Bénéficiaire</th>
+                <tr className="border--b border-slate-700 text-slate-400 uppercase tracking-w2ider text-[10px]">
+                  px <th className="text--left py-2 px-2">Bénéficiaire</th>
                   <th className="text-center py-2 px-2">Montant Alloué</th>
                   <th className="text-center py-2 px-2">Dépensé</th>
-                  <th className="text-center py-2 px-2">Solde</th>
+                  <th className="text-center2">Solde</th>
                   <th className="text-center py-2 px-2">Actions</th>
                 </tr>
               </thead>
