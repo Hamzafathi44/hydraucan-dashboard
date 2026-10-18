@@ -114,7 +114,7 @@ export const EnveloppeFinanciereView = () => {
   const montantAlloue = parseFloat(header.montantAlloue) || 0;
   const soldeRestant = montantAlloue - totals.totalJour;
 
-  // PDF GENERATION (PRO VERSION)
+  // PDF GENERATION
   const handleGeneratePDF = () => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
@@ -187,16 +187,21 @@ export const EnveloppeFinanciereView = () => {
       margin: { left: 14, right: 200 }
     });
 
-    // --- PAGE 2+: IMAGE JUSTIFICATIFS (PROOF) ---
+    // --- PAGE 2+: PROOF IMAGES ---
     const imagesToPrint = [];
     calculatedRows.forEach((row, index) => {
-      if (row.cimentImg) imagesToPrint.push10({ label: 'Ciment', amount: row.cimentTotal,);
- img       : row.c }
-
-imentImg, line: index + 1 });
-      if (       row.argileImg) imagesToPrint.push({ label //: 'Argile / Faïence', amount: row.argileTotal, img: row.argileImg, line: index + 1 });
-      if (row.carburantImg) imagesToPrint.push({ label: 'Carburant', amount: parseFloat(row.carburant) || 0, img: row.carburantImg, line: index + 1 });
-      if (row.autresImg) imagesToPrint.push({ label: 'Autres', amount: parseFloat(row.autres) || 0, img: row.autresImg, line: index + 1 });
+      if (row.cimentImg) {
+        imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
+      }
+      if (row.argileImg) {
+        imagesToPrint.push({ label: 'Argile / Faïence', amount: row.argileTotal, img: row.argileImg, line: index + 1 });
+      }
+      if (row.carburantImg) {
+        imagesToPrint.push({ label: 'Carburant', amount: parseFloat(row.carburant) || 0, img: row.carburantImg, line: index + 1 });
+      }
+      if (row.autresImg) {
+        imagesToPrint.push({ label: 'Autres', amount: parseFloat(row.autres) || 0, img: row.autresImg, line: index + 1 });
+      }
     });
 
     if (imagesToPrint.length > 0) {
@@ -205,7 +210,6 @@ imentImg, line: index + 1 });
       doc.setFontSize(16);
       doc.text("JUSTIFICATIFS DES DÉPENSES (PREUVES)", 148, 15, { align: 'center' });
 
-      // Layout config for images (2 columns x 3 rows per page = 6 images/page)
       let x = 14;
       let y = 30;
       const imgWidth = 120;
@@ -214,8 +218,7 @@ imentImg, line: index + 1 });
       const marginY = 15;
       let count = 0;
 
-      imagesToPrint.forEach((item, i) => {
-        // Page break logic
+      imagesToPrint.forEach((item) => {
         if (count > 0 && count % 4 === 0) {
           doc.addPage();
           doc.setFont("helvetica", "bold");
@@ -225,25 +228,24 @@ imentImg, line: index + 1 });
           y = 30;
         }
 
-        // Draw Title above each image
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(50, 50, 50);
         doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 2);
 
-        // Draw Image
         try {
-          // We draw a border around the image to make it look clean
           doc.setDrawColor(200, 200, 200);
           doc.rect(x, y, imgWidth, imgHeight);
           doc.addImage(item.img, 'JPEG', x, y, imgWidth, imgHeight);
         } catch (e) {
-          doc.text("Erreur d'affichage de l'image", x + 5, y +  Move coordinates for next image
+          doc.text("Erreur d'affichage de l'image", x + 5, y + 10);
+        }
+
         if (count % 2 === 0) {
-          x += imgWidth + marginX; // Move right
+          x += imgWidth + marginX;
         } else {
-          x = 14; // Reset to left
-          y += imgHeight + marginY; // Move down
+          x = 14;
+          y += imgHeight + marginY;
         }
         count++;
       });
