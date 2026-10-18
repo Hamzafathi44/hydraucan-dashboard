@@ -175,7 +175,17 @@ export const EnveloppeFinanciereView = () => {
       console.warn("Logo not found");
     }
 
-    // 2. MAIN TABLE (Right after Logo)
+    // 2. HEADER TEXT (Top Center/Left)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 105, 18, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 32);
+    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 38);
+
+    // 3. MAIN TABLE
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
@@ -183,6 +193,20 @@ export const EnveloppeFinanciereView = () => {
       d.carburant,
       d.autres,
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
+    ]);
+
+    // Add TOTAL row to the table
+    tableBody.push([
+      { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
+      '', 
+      '',
+      finalTotals.cimentTotal.toFixed(2),
+      '', 
+      '',
+      finalTotals.argileTotal.toFixed(2),
+      finalTotals.carburant.toFixed(2),
+      finalTotals.autres.toFixed(2),
+      finalTotals.totalGeneral.toFixed(2)
     ]);
 
     autoTable(doc, {
@@ -198,9 +222,9 @@ export const EnveloppeFinanciereView = () => {
         ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
       ],
       body: tableBody,
-      startY: 25, // Starts right below the logo
+      startY: 45,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 1.5, halign: 'center', valign: 'middle' },
+      styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
       columnStyles: {
         0: { cellWidth: 15 }, 1: { cellWidth: 20 }, 2: { cellWidth: 20 }, 3: { cellWidth: 25 },
@@ -209,26 +233,24 @@ export const EnveloppeFinanciereView = () => {
       }
     });
 
-    // 3. SUMMARY TEXT (Below the table)
+    // 4. RÉCAPITULATIF TABLE (Bottom Left)
     const finalY = doc.lastAutoTable.finalY + 15;
     
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("RÉCAPITULATIF DE L'ENVELOPPE", 14, finalY);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, finalY + 8);
-    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, finalY + 14);
-    doc.text(`Total dépensé : ${finalTotals.totalGeneral.toFixed(2)} DH`, 14, finalY + 20);
-    doc.text(`Solde restant : ${solde.toFixed(2)} DH`, 14, finalY + 26);
+    autoTable(doc, {
+      head: [['Récapitulatif', 'Montant (DH)']],
+      body: [
+        ['Montant alloué', alloue.toFixed(2)],
+        ['Total dépensé', finalTotals.totalGeneral.toFixed(2)],
+        ['Solde restant', solde.toFixed(2)]
+      ],
+      startY: finalY,
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 3 },
+      headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold' },
+      margin: { left: 14, right: 200 } // Keeps it on the left side
+    });
 
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, finalY + 34);
-
-    // 4. PROOF IMAGES (Page 2)
+    // 5. PROOF IMAGES (Page 2)
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
