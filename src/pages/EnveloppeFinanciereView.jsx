@@ -70,7 +70,6 @@ export const EnveloppeFinanciereView = () => {
   const addRow = () => setRows([...rows, createEmptyRow()]);
   const removeRow = (id) => { if (rows.length > 1) setRows(rows.filter(r => r.id !== id)); };
 
-  // Image logic (converts to JPEG via canvas to ensure PDF works)
   const triggerImageUpload = (rowId, field) => {
     setActiveUpload({ rowId, field });
     fileInputRef.current.click();
@@ -106,7 +105,6 @@ export const EnveloppeFinanciereView = () => {
 
   const removeImage = (rowId, field) => setRows(rows.map(r => r.id === rowId ? { ...r, [field]: null } : r));
 
-  // Calculations
   const calculatedRows = useMemo(() => {
     return rows.map((d) => {
       const cimentTotal = (parseFloat(d.cimentQt) || 0) * (parseFloat(d.cimentPrix) || 0);
@@ -130,10 +128,30 @@ export const EnveloppeFinanciereView = () => {
   const montantAlloue = parseFloat(header.montantAlloue) || 0;
   const soldeRestant = montantAlloue - totals.totalGeneral;
 
-  // PDF GENERATION (FIXED)
-  const handleGeneratePDF = () => {
+  // ✅ REUSABLE PDF GENERATOR FUNCTION
+  const downloadPDF = (reportHeader, reportRows) => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
+
+    // Calculate totals just in case it's from the saved list
+    const processedRows = reportRows.map(r => {
+      const cimentTotal = (parseFloat(r.cimentQt) || 0) * (parseFloat(r.cimentPrix) || 0);
+      const argileTotal = (parseFloat(r.argileQt) || 0) * (parseFloat(r.argilePrix) || 0);
+      const carburant = parseFloat(r.carburant) || 0;
+      const autres = parseFloat(r.autres) || 0;
+      return { ...r, cimentTotal, argileTotal, totalLigne: cimentTotal + argileTotal + carburant + autres };
+    });
+
+    const finalTotals = processedRows.reduce((acc, curr) => ({
+      cimentTotal: acc.cimentTotal + curr.cimentTotal,
+      argileTotal: acc.argileTotal + curr.argileTotal,
+      carburant: acc.carburant + (parseFloat(curr.carburant) || 0),
+      autres: acc.autres + (parseFloat(curr.autres) || 0),
+      totalGeneral: acc.totalGeneral + curr.totalLigne,
+    }), { cimentTotal: 0, argileTotal: 0, carburant: 0, autres: 0, totalGeneral: 0 });
+
+    const alloue = parseFloat(reportHeader.montantAlloue) || 0;
+    const solde = alloue - finalTotals.totalGeneral;
 
     // --- PAGE 1: MAIN TABLE ---
     doc.setFont("helvetica", "bold");
@@ -142,11 +160,11 @@ export const EnveloppeFinanciereView = () => {
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Bénéficiaire : ${header.beneficiaire || '........'}`, 14, 25);
-    doc.text(`Montant alloué : ${montantAlloue.toFixed(2)} DH`, 14, 31);
+    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '........'}`, 14, 25);
+    doc.text(`Montant alloué : ${alloue.toFixed(2)} DH`, 14, 31);
     doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 14, 37);
 
-    const tableBody = calculatedRows.map((d, index) => [
+    const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
       d.argileQt, d.argilePrix, d.argileTotal ? d.argileTotal.toFixed(2) : '',
@@ -155,15 +173,13 @@ export const EnveloppeFinanciereView = () => {
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
-    // Totals row
     tableBody.push([
-      { content: 'TOTAL', colSpan: 3, styles: { fontStyle: 'bold', halign: 'center' } },
-      totals.cimentTotal.toFixed(2),
-      { content: '', colSpan: 2 },
-      totals.argileTotal.toFixed(2),
-      totals.carburant.toFixed(2),
-      totals.autres.toFixed(2),
-      totals.totalGeneral.toFixed(2)
+      { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
+      '', '', finalTotals.cimentTotal.toFixed(2),
+      '', '', finalTotals.argileTotal.toFixed(2),
+      finalTotals.carburant.toFixed(2),
+      finalTotals.autres.toFixed(2),
+      finalTotals.totalGeneral.toFixed(2)
     ]);
 
     autoTable(doc, {
@@ -192,13 +208,12 @@ export const EnveloppeFinanciereView = () => {
 
     const finalY = doc.lastAutoTable.finalY + 15;
     
-    // Summary Table
     autoTable(doc, {
       head: [['Récapitulatif', 'Montant (DH)']],
       body: [
-        ['Montant alloué', montantAlloue.toFixed(2)],
-        ['Total dépensé', totals.totalGeneral.toFixed(2)],
-        ['Solde restant', soldeRestant.toFixed(2)]
+        ['Montant alloué', alloue.toFixed(2)],
+        ['Total dépensé', finalTotals.totalGeneral.toFixed(2)],
+        ['Solde restant', solde.toFixed(2)]
       ],
       startY: finalY,
       theme: 'grid',
@@ -209,7 +224,7 @@ export const EnveloppeFinanciereView = () => {
 
     // --- PAGE 2+: PROOF IMAGES ---
     const imagesToPrint = [];
-    calculatedRows.forEach((row, index) => {
+    processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
       if (row.argileImg) imagesToPrint.push({ label: 'Argile / Faïence', amount: row.argileTotal, img: row.argileImg, line: index + 1 });
       if (row.carburantImg) imagesToPrint.push({ label: 'Carburant', amount: parseFloat(row.carburant) || 0, img: row.carburantImg, line: index + 1 });
@@ -253,7 +268,7 @@ export const EnveloppeFinanciereView = () => {
       });
     }
 
-    doc.save(`Enveloppe_${header.beneficiaire || 'Rapport'}.pdf`);
+    doc.save(`Enveloppe_${reportHeader.beneficiaire || 'Rapport'}.pdf`);
     toast.dismiss(loadingToast);
     toast.success("PDF généré avec succès !");
   };
@@ -287,7 +302,7 @@ export const EnveloppeFinanciereView = () => {
         </div>
         
         <div className="flex gap-2 w-full md:w-auto">
-          <button onClick={handleGeneratePDF} className="flex-1 md:flex-none justify-center bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2">
+          <button onClick={() => downloadPDF(header, rows)} className="flex-1 md:flex-none justify-center bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2">
             <FileDown className="w-4 h-4" />
             PDF
           </button>
@@ -316,7 +331,6 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      {/* TABLE */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-2 md:p-4 mb-6 overflow-hidden">
         <div className="flex justify-end mb-2">
           <button onClick={addRow} className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition">
@@ -358,7 +372,6 @@ export const EnveloppeFinanciereView = () => {
                 <tr key={d.id} className="hover:bg-white/5 border-b border-slate-800">
                   <td className="text-center font-bold text-slate-400 border border-slate-800">{i + 1}</td>
                   
-                  {/* Ciment */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentQt} onChange={(e) => handleRowChange(d.id, 'cimentQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentPrix} onChange={(e) => handleRowChange(d.id, 'cimentPrix', e.target.value)} className={inputClass} /></td>
                   <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.cimentTotal ? d.cimentTotal.toFixed(2) : ''}</td>
@@ -370,7 +383,6 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  {/* Argile */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argileQt} onChange={(e) => handleRowChange(d.id, 'argileQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argilePrix} onChange={(e) => handleRowChange(d.id, 'argilePrix', e.target.value)} className={inputClass} /></td>
                   <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.argileTotal ? d.argileTotal.toFixed(2) : ''}</td>
@@ -382,7 +394,6 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  {/* Carburant */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.carburant} onChange={(e) => handleRowChange(d.id, 'carburant', e.target.value)} className={inputClass} /></td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.carburant > 0 && (
@@ -392,7 +403,6 @@ export const EnveloppeFinanciereView = () => {
                     )}
                   </td>
 
-                  {/* Autres */}
                   <td className="p-1 border border-slate-800"><input type="number" value={d.autres} onChange={(e) => handleRowChange(d.id, 'autres', e.target.value)} className={inputClass} /></td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.autres > 0 && (
@@ -426,7 +436,6 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      {/* SUMMARY */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 max-w-sm mb-10">
         <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Récapitulatif</h3>
         <div className="space-y-2">
@@ -448,7 +457,7 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      {/* SAVED REPORTS LIST (Like Refection) */}
+      {/* ✅ SAVED REPORTS LIST WITH PDF DOWNLOAD */}
       <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/60 rounded-2xl p-5 md:p-6 shadow-lg max-w-5xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
           <div className="flex items-center gap-2">
@@ -499,10 +508,14 @@ export const EnveloppeFinanciereView = () => {
                       <td className={`text-center py-2 px-2 font-mono font-bold ${solde < 0 ? 'text-red-400' : 'text-emerald-400'}`}>{solde.toFixed(2)}</td>
                       <td className="text-center py-2 px-2">
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => handleEditClick(r)} className="text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg p-1.5 transition" title="Edit">
+                          {/* ✅ DOWNLOAD PDF FROM SAVED */}
+                          <button onClick={() => downloadPDF(r.header, r.rows)} className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg p-1.5 transition" title="Télécharger PDF">
+                            <FileDown className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleEditClick(r)} className="text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg p-1.5 transition" title="Modifier">
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => deleteReport(r.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-1.5 transition" title="Delete">
+                          <button onClick={() => deleteReport(r.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg p-1.5 transition" title="Supprimer">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
