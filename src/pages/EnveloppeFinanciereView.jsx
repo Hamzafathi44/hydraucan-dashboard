@@ -12,14 +12,12 @@ export const EnveloppeFinanciereView = () => {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
 
-  // ✅ Date removed from header
   const [header, setHeader] = useState({ beneficiaire: '', montantAlloue: '' });
   const [rows, setRows] = useState([]);
   
   const fileInputRef = useRef(null);
   const [activeUpload, setActiveUpload] = useState({ rowId: null, field: null });
 
-  // ✅ Date added to the row
   const createEmptyRow = () => ({
     id: Date.now() + Math.random(),
     date: '',
@@ -147,7 +145,7 @@ export const EnveloppeFinanciereView = () => {
     });
   };
 
-  const downloadPDF = async (reportHeader, reportRows) => {
+  const downloadPDF = async (reportHeader, reportRows = []) => {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const loadingToast = toast.loading("Génération du PDF...");
 
@@ -170,33 +168,28 @@ export const EnveloppeFinanciereView = () => {
     const alloue = parseFloat(reportHeader.montantAlloue) || 0;
     const solde = alloue - finalTotals.totalGeneral;
 
-    // --- 1. HEADER (LOGO & TEXT) ---
+    // --- 1. HEADER ---
     try {
       const logoData = await toBase64('/logo-hydracane.png');
       doc.addImage(logoData, 'PNG', 14, 10, 30, 12); 
-    } catch (e) {
-      console.warn("Logo not found");
-    }
+    } catch (e) {}
 
-    // Title (Centered)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
     doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 20, { align: 'center' });
 
-    // Info text
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 32);
     doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 38);
 
-    // Objet text
     doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
     doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, 45);
 
     // --- 2. MAIN TABLE ---
-    // ✅ Added 'Date' to the table body
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.date || '',
@@ -207,46 +200,27 @@ export const EnveloppeFinanciereView = () => {
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
-    // ✅ PERFECTLY ALIGNED TOTAL ROW (covers 11 columns: 0=N°, 1=Date, 2=C.Qt, 3=C.Prix, 4=C.Tot, 5=A.Qt, 6=A.Prix, 7=A.Tot, 8=Carb, 9=Aut, 10=Tot)
+    // TOTAL row spans all left columns, leaving only the final grand total
     tableBody.push([
-      { content: 'TOTAL', colSpan: 3, styles: { fontStyle: 'bold', halign: 'center' } },
-      '', // Ciment Qt
-      '', // Ciment Prix
-      finalTotals.cimentTotal.toFixed(2), // Ciment Total
-      '', // Argile Qt
-      '', // Argile Prix
-      finalTotals.argileTotal.toFixed(2), // Argile Total
-      finalTotals.carburant.toFixed(2),
-      finalTotals.autres.toFixed(2),
+      { content: 'TOTAL', colSpan: 10, styles: { fontStyle: 'bold', halign: 'center' } },
       finalTotals.totalGeneral.toFixed(2)
     ]);
 
     autoTable(doc, {
-      head: [
-        [
-          { content: 'N°', rowSpan: 2 },
-          { content: 'Date', rowSpan: 2 }, // ✅ NEW DATE COLUMN
-          { content: 'Ciment', colSpan: 3, styles: { halign: 'center' } },
-          { content: 'Argile / Faïence', colSpan: 3, styles: { halign: 'center' } },
-          { content: 'Carburant', rowSpan: 2 },
-          { content: 'Autres', rowSpan: 2 },
-          { content: 'Total', rowSpan: 2 }
-        ],
-        ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
-      ],
+      head: [['N°', 'Date', 'Ciment Qt', 'Ciment P.U.', 'Ciment Total', 'Argile Qt', 'Argile P.U.', 'Argile Total', 'Carburant', 'Autres', 'Total']],
       body: tableBody,
-      startY: 52,
+      startY: 50,
       theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle' },
+      styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle', textColor: [0, 0, 0] },
       headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold', halign: 'center' },
       columnStyles: {
-        0: { cellWidth: 10 },  // N°
-        1: { cellWidth: 22 },  // Date
-        2: { cellWidth: 15 }, 3: { cellWidth: 15 }, 4: { cellWidth: 20 }, // Ciment
-        5: { cellWidth: 15 }, 6: { cellWidth: 15 }, 7: { cellWidth: 20 }, // Argile
-        8: { cellWidth: 20 },  // Carburant
-        9: { cellWidth: 20 },  // Autres
-        10: { cellWidth: 25 }  // Total
+        0: { cellWidth: 12 },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 16 }, 3: { cellWidth: 16 }, 4: { cellWidth: 20 },
+        5: { cellWidth: 16 }, 6: { cellWidth: 16 }, 7: { cellWidth: 20 },
+        8: { cellWidth: 20 },
+        9: { cellWidth: 20 },
+        10: { cellWidth: 25 }
       }
     });
 
@@ -262,12 +236,12 @@ export const EnveloppeFinanciereView = () => {
       ],
       startY: finalY,
       theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
+      styles: { fontSize: 10, cellPadding: 3, textColor: [0, 0, 0] },
       headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold' },
       margin: { left: 14, right: 200 }
     });
 
-    // --- 4. PROOF IMAGES (6 PER PAGE) ---
+    // --- 4. PROOF IMAGES (PROFESSIONAL FORMAT) ---
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -285,6 +259,7 @@ export const EnveloppeFinanciereView = () => {
 
       let count = 0;
       imagesToPrint.forEach((item) => {
+        // Pagination: exactly 6 images per page
         if (count > 0 && count % 6 === 0) {
           doc.addPage();
           doc.setFont("helvetica", "bold");
@@ -292,24 +267,46 @@ export const EnveloppeFinanciereView = () => {
           doc.text("JUSTIFICATIFS DES DÉPENSES (SUITE)", 148, 15, { align: 'center' });
         }
 
-        const col = count % 2; // 0 for left, 1 for right
+        // 2 Columns, 3 Rows per page grid
+        const col = count % 2; // 0 = Left, 1 = Right
         const row = Math.floor((count % 6) / 2); // 0, 1, 2
 
-        const x = col === 0 ? 14 : 148; 
-        const y = 30 + (row * 70); 
+        // Calculate position with proper margins and spacing
+        const boxWidth = 125;
+        const boxHeight = 55;
+        const padding = 8; // Space around the image inside the box
+        
+        const x = col === 0 ? 14 : 14 + boxWidth + 15; 
+        const y = 30 + (row * 65); // 65mm vertical gap between rows
 
+        // Draw Title
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 2);
+        doc.setTextColor(40, 40, 40);
+        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 4);
+
+        // Draw Image Box (Gray background & border)
+        doc.setFillColor(248, 250, 252); // Very light gray
+        doc.rect(x, y, boxWidth, boxHeight, 'F'); 
+        
+        doc.setDrawColor(200, 200, 200); // Gray border
+        doc.setLineWidth(0.3);
+        doc.rect(x, y, boxWidth, boxHeight, 'S');
 
         try {
-          doc.setDrawColor(200, 200, 200);
-          doc.rect(x, y, 135, 60); 
-          doc.addImage(item.img, 'JPEG', x, y, 135, 60);
+          // Draw the image with a slight margin inside the box
+          doc.addImage(
+            item.img, 
+            'JPEG', 
+            x + padding, 
+            y + padding, 
+            boxWidth - (padding * 2), 
+            boxHeight - (padding * 2)
+          );
         } catch (e) {
           doc.setTextColor(255, 0, 0);
-          doc.text("Erreur d'affichage de l'image", x + 2, y + 10);
+          doc.setFontSize(9);
+          doc.text("Erreur d'affichage", x + padding + 10, y + boxHeight / 2);
         }
 
         count++;
@@ -345,7 +342,7 @@ export const EnveloppeFinanciereView = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-white">
             {editingId ? "Modifier le Rapport" : "Nouveau Rapport"}
-          </h2>
+          transition flex items </h2-center>
           <p className="text-sm text-slate-400 mt-1">Gérez vos dépenses et joignez les preuves.</p>
         </div>
         
@@ -359,14 +356,13 @@ export const EnveloppeFinanciereView = () => {
               Annuler
             </button>
           )}
-          <button onClick={handleSave} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl gap-2 disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Sauvegarde...' : (editingId ? 'Mettre à jour' : 'Sauvegarder')}
           </button>
         </div>
       </div>
 
-      {/* HEADER FORM (No Date) */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -391,7 +387,7 @@ export const EnveloppeFinanciereView = () => {
             <thead>
               <tr className="bg-slate-800/80 text-slate-300">
                 <th className="py-2 px-1 border border-slate-700 w-8" rowSpan={2}>N°</th>
-                <th className="py-2 px-1 border border-slate-700 w-24" rowSpan={2}>Date</th> {/* ✅ NEW DATE COLUMN */}
+                <th className="py-2 px-1 border border-slate-700 w-24" rowSpan={2}>Date</th>
                 <th className="py-1 border border-slate-700" colSpan={4}>Ciment</th>
                 <th className="py-1 border border-slate-700" colSpan={4}>Argile / Faïence</th>
                 <th className="py-1 border border-slate-700" colSpan={2}>Carburant</th>
@@ -421,7 +417,7 @@ export const EnveloppeFinanciereView = () => {
               {calculatedRows.map((d, i) => (
                 <tr key={d.id} className="hover:bg-white/5 border-b border-slate-800">
                   <td className="text-center font-bold text-slate-400 border border-slate-800">{i + 1}</td>
-                  <td className="p-1 border border-slate-800"><input type="date" value={d.date} onChange={(e) => handleRowChange(d.id, 'date', e.target.value)} className={inputClass} /></td> {/* ✅ DATE INPUT IN ROW */}
+                  <td className="p-1 border border-slate-800"><input type="date" value={d.date} onChange={(e) => handleRowChange(d.id, 'date', e.target.value)} className={inputClass} /></td>
                   
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentQt} onChange={(e) => handleRowChange(d.id, 'cimentQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentPrix} onChange={(e) => handleRowChange(d.id, 'cimentPrix', e.target.value)} className={inputClass} /></td>
@@ -515,13 +511,13 @@ export const EnveloppeFinanciereView = () => {
           <p className="text-center text-slate-500 py-10 text-sm">Aucun rapport sauvegardé</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-slate- py300">
+            <table className="w-full text-xs text-slate-300">
               <thead>
-                <tr className="border--b border-slate-700 text-slate-400 uppercase tracking-w2ider text-[10px]">
-                  px <th className="text--left py-2 px-2">Bénéficiaire</th>
+                <tr className="border-b border-slate-700 text-slate-400 uppercase tracking-wider text-[10px]">
+                  <th className="text-left py-2 px-2">Bénéficiaire</th>
                   <th className="text-center py-2 px-2">Montant Alloué</th>
                   <th className="text-center py-2 px-2">Dépensé</th>
-                  <th className="text-center2">Solde</th>
+                  <th className="text-center py-2 px-2">Solde</th>
                   <th className="text-center py-2 px-2">Actions</th>
                 </tr>
               </thead>
