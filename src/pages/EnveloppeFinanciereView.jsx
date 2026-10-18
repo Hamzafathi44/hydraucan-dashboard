@@ -167,7 +167,7 @@ export const EnveloppeFinanciereView = () => {
     const alloue = parseFloat(reportHeader.montantAlloue) || 0;
     const solde = alloue - finalTotals.totalGeneral;
 
-    // 1. LOGO (Top Left)
+    // --- 1. LOGO & HEADER ---
     try {
       const logoData = await toBase64('/logo-hydracane.png');
       doc.addImage(logoData, 'PNG', 14, 10, 35, 12);
@@ -175,17 +175,37 @@ export const EnveloppeFinanciereView = () => {
       console.warn("Logo not found");
     }
 
-    // 2. HEADER TEXT (Top Center/Left)
+    // Title Centered
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 105, 18, { align: 'center' });
+    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 20, { align: 'center' });
 
+    // Beneficiary info
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 32);
-    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 38);
+    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 35);
+    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 41);
 
-    // 3. MAIN TABLE
+    // --- 2. FIRST TABLE (Désignation des dépenses) ---
+    autoTable(doc, {
+      startY: 48,
+      head: [['Désignation des dépenses', 'Montant (DH)']],
+      body: [
+        ['Ciment et matériaux', finalTotals.cimentTotal.toFixed(2)],
+        ['Salaires', '0.00'],
+        ['Gasoil', finalTotals.carburant.toFixed(2)],
+        ['Entretien et réparations', '0.00'],
+        ['Autres dépenses', finalTotals.autres.toFixed(2)],
+        ['Total des dépenses', finalTotals.totalGeneral.toFixed(2)],
+        ['Reste disponible', solde.toFixed(2)],
+      ],
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
+      margin: { left: 14, right: 200 }
+    });
+
+    // --- 3. SECOND TABLE (Detailed) ---
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
@@ -198,12 +218,8 @@ export const EnveloppeFinanciereView = () => {
     // Add TOTAL row to the table
     tableBody.push([
       { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
-      '', 
-      '',
-      finalTotals.cimentTotal.toFixed(2),
-      '', 
-      '',
-      finalTotals.argileTotal.toFixed(2),
+      '', '', finalTotals.cimentTotal.toFixed(2),
+      '', '', finalTotals.argileTotal.toFixed(2),
       finalTotals.carburant.toFixed(2),
       finalTotals.autres.toFixed(2),
       finalTotals.totalGeneral.toFixed(2)
@@ -222,10 +238,10 @@ export const EnveloppeFinanciereView = () => {
         ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
       ],
       body: tableBody,
-      startY: 45,
+      startY: doc.lastAutoTable.finalY + 15, // Starts below the first table
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle' },
-      headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
+      headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold', halign: 'center' },
       columnStyles: {
         0: { cellWidth: 15 }, 1: { cellWidth: 20 }, 2: { cellWidth: 20 }, 3: { cellWidth: 25 },
         4: { cellWidth: 20 }, 5: { cellWidth: 20 }, 6: { cellWidth: 25 }, 7: { cellWidth: 25 },
@@ -233,24 +249,7 @@ export const EnveloppeFinanciereView = () => {
       }
     });
 
-    // 4. RÉCAPITULATIF TABLE (Bottom Left)
-    const finalY = doc.lastAutoTable.finalY + 15;
-    
-    autoTable(doc, {
-      head: [['Récapitulatif', 'Montant (DH)']],
-      body: [
-        ['Montant alloué', alloue.toFixed(2)],
-        ['Total dépensé', finalTotals.totalGeneral.toFixed(2)],
-        ['Solde restant', solde.toFixed(2)]
-      ],
-      startY: finalY,
-      theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold' },
-      margin: { left: 14, right: 200 } // Keeps it on the left side
-    });
-
-    // 5. PROOF IMAGES (Page 2)
+    // --- 4. IMAGES (Page 2) ---
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
