@@ -240,7 +240,7 @@ export const EnveloppeFinanciereView = () => {
       margin: { left: 14, right: 200 }
     });
 
-    // --- 4. PROOF IMAGES (100x45 SIZE) ---
+    // --- 4. PROOF IMAGES (80x55 SIZE) ---
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -268,14 +268,14 @@ export const EnveloppeFinanciereView = () => {
         const col = count % 2; 
         const row = Math.floor((count % 6) / 2); 
 
-        // ✅ NEW SIZE: 100 WIDTH x 45 HEIGHT
-        const boxWidth = 100; 
-        const boxHeight = 45; 
+        // ✅ NEW SIZE: 80 WIDTH x 55 HEIGHT
+        const boxWidth = 80; 
+        const boxHeight = 55; 
         const padding = 4; 
         
-        // Centered columns
-        const x = col === 0 ? 34 : 34 + boxWidth + 30; 
-        const y = 30 + (row * 55); 
+        // Centered columns for 80mm width
+        const x = col === 0 ? 50 : 50 + boxWidth + 37; 
+        const y = 25 + (row * 60); 
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
