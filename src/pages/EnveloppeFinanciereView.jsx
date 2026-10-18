@@ -167,51 +167,29 @@ export const EnveloppeFinanciereView = () => {
     const alloue = parseFloat(reportHeader.montantAlloue) || 0;
     const solde = alloue - finalTotals.totalGeneral;
 
-    // --- 1. LOGO & HEADER TEXT ---
+    // --- 1. HEADER (LOGO & TEXT) ---
     try {
       const logoData = await toBase64('/logo-hydracane.png');
-      doc.addImage(logoData, 'PNG', 14, 10, 30, 12); // Slightly smaller logo to avoid overlaps
+      doc.addImage(logoData, 'PNG', 14, 10, 30, 12); 
     } catch (e) {
       console.warn("Logo not found");
     }
 
-    // Title (Centered, moved down slightly to avoid logo)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 148, 20, { align: 'center' });
+    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 105, 18, { align: 'center' });
 
-    // Info text (Left aligned)
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 32);
     doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 38);
 
-    // Objet text
     doc.setFont("helvetica", "italic");
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
     doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, 45);
 
-    // --- 2. FIRST TABLE (Désignation des dépenses) ---
-    autoTable(doc, {
-      startY: 50,
-      head: [['Désignation des dépenses', 'Montant (DH)']],
-      body: [
-        ['Ciment et matériaux', finalTotals.cimentTotal.toFixed(2)],
-        ['Salaires', '0.00'],
-        ['Gasoil', finalTotals.carburant.toFixed(2)],
-        ['Entretien et réparations', '0.00'],
-        ['Autres dépenses', finalTotals.autres.toFixed(2)],
-        ['Total des dépenses', finalTotals.totalGeneral.toFixed(2)],
-        ['Reste disponible', solde.toFixed(2)],
-      ],
-      theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
-      margin: { left: 14, right: 200 }
-    });
-
-    // --- 3. SECOND TABLE (Detailed) ---
+    // --- 2. MAIN TABLE ---
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
@@ -221,13 +199,16 @@ export const EnveloppeFinanciereView = () => {
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
+    // Perfectly aligned TOTAL row
     tableBody.push([
-      { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
-      '', '', finalTotals.cimentTotal.toFixed(2),
-      '', '', finalTotals.argileTotal.toFixed(2),
-      finalTotals.carburant.toFixed(2),
-      finalTotals.autres.toFixed(2),
-      finalTotals.totalGeneral.toFixed(2)
+      { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } }, // Spans Col 0 & 1
+      '', // Col 2 (empty)
+      finalTotals.cimentTotal.toFixed(2), // Col 3
+      '', '', // Col 4 & 5 (empty)
+      finalTotals.argileTotal.toFixed(2), // Col 6
+      finalTotals.carburant.toFixed(2), // Col 7
+      finalTotals.autres.toFixed(2), // Col 8
+      finalTotals.totalGeneral.toFixed(2) // Col 9
     ]);
 
     autoTable(doc, {
@@ -243,7 +224,7 @@ export const EnveloppeFinanciereView = () => {
         ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
       ],
       body: tableBody,
-      startY: doc.lastAutoTable.finalY + 10,
+      startY: 50,
       theme: 'grid',
       styles: { fontSize: 9, cellPadding: 2, halign: 'center', valign: 'middle' },
       headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold', halign: 'center' },
@@ -254,7 +235,24 @@ export const EnveloppeFinanciereView = () => {
       }
     });
 
-    // --- 4. PROOF IMAGES (Page 2) ---
+    // --- 3. RÉCAPITULATIF TABLE ---
+    const finalY = doc.lastAutoTable.finalY + 15;
+    
+    autoTable(doc, {
+      head: [['Récapitulatif', 'Montant (DH)']],
+      body: [
+        ['Montant alloué', alloue.toFixed(2)],
+        ['Total dépensé', finalTotals.totalGeneral.toFixed(2)],
+        ['Solde restant', solde.toFixed(2)]
+      ],
+      startY: finalY,
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 3 },
+      headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold' },
+      margin: { left: 14, right: 200 }
+    });
+
+    // --- 4. PROOF IMAGES (6 PER PAGE) ---
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -270,34 +268,36 @@ export const EnveloppeFinanciereView = () => {
       doc.setTextColor(0, 0, 0);
       doc.text("JUSTIFICATIFS DES DÉPENSES (PREUVES)", 148, 15, { align: 'center' });
 
-      let currentY = 30;
-      const imgWidth = 80;
-      const imgHeight = 55;
-
+      let count = 0;
       imagesToPrint.forEach((item) => {
-        if (currentY + imgHeight + 20 > 200) {
+        if (count > 0 && count % 6 === 0) {
           doc.addPage();
           doc.setFont("helvetica", "bold");
           doc.setFontSize(16);
           doc.text("JUSTIFICATIFS DES DÉPENSES (SUITE)", 148, 15, { align: 'center' });
-          currentY = 30;
         }
+
+        const col = count % 2; // 0 for left, 1 for right
+        const row = Math.floor((count % 6) / 2); // 0, 1, 2
+
+        const x = col === 0 ? 14 : 144; // 144 = 14 + 110 + 20 margin
+        const y = 30 + (row * 60); 
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(50, 50, 50);
-        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, 14, currentY);
+        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 2);
 
         try {
           doc.setDrawColor(200, 200, 200);
-          doc.rect(14, currentY + 2, imgWidth, imgHeight);
-          doc.addImage(item.img, 'JPEG', 14, currentY + 2, imgWidth, imgHeight);
+          doc.rect(x, y, 110, 45);
+          doc.addImage(item.img, 'JPEG', x, y, 110, 45);
         } catch (e) {
           doc.setTextColor(255, 0, 0);
-          doc.text("Erreur d'affichage de l'image", 15, currentY + 10);
+          doc.text("Erreur d'affichage de l'image", x + 2, y + 10);
         }
 
-        currentY += imgHeight + 15;
+        count++;
       });
     }
 
