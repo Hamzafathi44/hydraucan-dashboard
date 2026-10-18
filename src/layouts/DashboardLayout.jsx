@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { 
-  Menu, X, LayoutDashboard, FileText, Settings, LogOut, Droplets, PieChart, Clock, FileSpreadsheet, Wrench
+  Menu, X, LayoutDashboard, FileText, Settings, LogOut, Droplets, PieChart, Clock, FileSpreadsheet, Wrench, wallet
 } from 'lucide-react';
 
 export const DashboardLayout = ({ children, activeView, setActiveView }) => {
@@ -92,6 +92,14 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
           >
             <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
             IMPORT EXCEL SRM
+          </button>
+        
+            <button 
+            onClick={() => { setActiveView('enveloppe'); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeView === 'enveloppe' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+          >
+            <Wallet className="w-5 h-5" />
+            ENVELOPPE FINANCIÈRE
           </button>
 
           <button 
