@@ -240,7 +240,7 @@ export const EnveloppeFinanciereView = () => {
       margin: { left: 14, right: 200 }
     });
 
-    // --- 4. PROOF IMAGES (PROFESSIONAL FORMAT) ---
+    // --- 4. PROOF IMAGES (PROFESSIONAL FORMAT - SMALLER) ---
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -268,12 +268,13 @@ export const EnveloppeFinanciereView = () => {
         const col = count % 2; 
         const row = Math.floor((count % 6) / 2); 
 
-        const boxWidth = 125;
-        const boxHeight = 55;
-        const padding = 8; 
+        // ✅ REDUCED SIZES HERE
+        const boxWidth = 110;
+        const boxHeight = 45;
+        const padding = 4; 
         
-        const x = col === 0 ? 14 : 14 + boxWidth + 15; 
-        const y = 30 + (row * 65); 
+        const x = col === 0 ? 14 : 14 + boxWidth + 20; // Spacing adjusted
+        const y = 30 + (row * 55); // Spacing adjusted
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
