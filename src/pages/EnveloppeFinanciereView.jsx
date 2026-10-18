@@ -200,7 +200,6 @@ export const EnveloppeFinanciereView = () => {
       d.totalLigne ? d.totalLigne.toFixed(2) : ''
     ]);
 
-    // TOTAL row spans all left columns, leaving only the final grand total
     tableBody.push([
       { content: 'TOTAL', colSpan: 10, styles: { fontStyle: 'bold', halign: 'center' } },
       finalTotals.totalGeneral.toFixed(2)
@@ -259,7 +258,6 @@ export const EnveloppeFinanciereView = () => {
 
       let count = 0;
       imagesToPrint.forEach((item) => {
-        // Pagination: exactly 6 images per page
         if (count > 0 && count % 6 === 0) {
           doc.addPage();
           doc.setFont("helvetica", "bold");
@@ -267,42 +265,30 @@ export const EnveloppeFinanciereView = () => {
           doc.text("JUSTIFICATIFS DES DÉPENSES (SUITE)", 148, 15, { align: 'center' });
         }
 
-        // 2 Columns, 3 Rows per page grid
-        const col = count % 2; // 0 = Left, 1 = Right
-        const row = Math.floor((count % 6) / 2); // 0, 1, 2
+        const col = count % 2; 
+        const row = Math.floor((count % 6) / 2); 
 
-        // Calculate position with proper margins and spacing
         const boxWidth = 125;
         const boxHeight = 55;
-        const padding = 8; // Space around the image inside the box
+        const padding = 8; 
         
         const x = col === 0 ? 14 : 14 + boxWidth + 15; 
-        const y = 30 + (row * 65); // 65mm vertical gap between rows
+        const y = 30 + (row * 65); 
 
-        // Draw Title
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(40, 40, 40);
         doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 4);
 
-        // Draw Image Box (Gray background & border)
-        doc.setFillColor(248, 250, 252); // Very light gray
+        doc.setFillColor(248, 250, 252); 
         doc.rect(x, y, boxWidth, boxHeight, 'F'); 
         
-        doc.setDrawColor(200, 200, 200); // Gray border
+        doc.setDrawColor(200, 200, 200); 
         doc.setLineWidth(0.3);
         doc.rect(x, y, boxWidth, boxHeight, 'S');
 
         try {
-          // Draw the image with a slight margin inside the box
-          doc.addImage(
-            item.img, 
-            'JPEG', 
-            x + padding, 
-            y + padding, 
-            boxWidth - (padding * 2), 
-            boxHeight - (padding * 2)
-          );
+          doc.addImage(item.img, 'JPEG', x + padding, y + padding, boxWidth - (padding * 2), boxHeight - (padding * 2));
         } catch (e) {
           doc.setTextColor(255, 0, 0);
           doc.setFontSize(9);
@@ -342,7 +328,7 @@ export const EnveloppeFinanciereView = () => {
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-white">
             {editingId ? "Modifier le Rapport" : "Nouveau Rapport"}
-          transition flex items </h2-center>
+          </h2>
           <p className="text-sm text-slate-400 mt-1">Gérez vos dépenses et joignez les preuves.</p>
         </div>
         
@@ -356,7 +342,7 @@ export const EnveloppeFinanciereView = () => {
               Annuler
             </button>
           )}
-          <button onClick={handleSave} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl gap-2 disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Sauvegarde...' : (editingId ? 'Mettre à jour' : 'Sauvegarder')}
           </button>
