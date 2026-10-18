@@ -161,7 +161,7 @@ export const EnveloppeFinanciereView = () => {
     doc.text(`Montant alloué : ${alloue.toFixed(2)} DH`, 14, 31);
     doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 14, 37);
 
-    // ONLY the rows, no totals row in the PDF
+    // PDF Table Body (No bottom totals inside)
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
@@ -197,7 +197,7 @@ export const EnveloppeFinanciereView = () => {
 
     const finalY = doc.lastAutoTable.finalY + 15;
     
-    // ONLY TOTAL HERE IN PDF
+    // Summary Table
     autoTable(doc, {
       head: [['Récapitulatif', 'Montant (DH)']],
       body: [
@@ -212,7 +212,7 @@ export const EnveloppeFinanciereView = () => {
       margin: { left: 14, right: 200 }
     });
 
-    // PAGE 2: IMAGES
+    // Proof images
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
