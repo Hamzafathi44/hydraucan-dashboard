@@ -12,7 +12,6 @@ export const EnveloppeFinanciereView = () => {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
 
-  // ✅ DATE REMOVED from header
   const [header, setHeader] = useState({ beneficiaire: '', montantAlloue: '' });
   const [rows, setRows] = useState([]);
   
@@ -168,7 +167,7 @@ export const EnveloppeFinanciereView = () => {
     const alloue = parseFloat(reportHeader.montantAlloue) || 0;
     const solde = alloue - finalTotals.totalGeneral;
 
-    // LOGO
+    // 1. LOGO (Top Left)
     try {
       const logoData = await toBase64('/logo-hydracane.png');
       doc.addImage(logoData, 'PNG', 14, 10, 35, 12);
@@ -176,39 +175,7 @@ export const EnveloppeFinanciereView = () => {
       console.warn("Logo not found");
     }
 
-    // HEADER TEXT (No date)
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("SITUATION DE CONSOMMATION DE L'ENVELOPPE FINANCIÈRE", 14, 30);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, 38);
-    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, 44);
-    
-    doc.setFont("helvetica", "italic");
-    doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, 51);
-
-    // SUMMARY TABLE
-    autoTable(doc, {
-      startY: 56,
-      head: [['Désignation des dépenses', 'Montant (DH)']],
-      body: [
-        ['Ciment et matériaux', finalTotals.cimentTotal.toFixed(2)],
-        ['Salaires', '0.00'],
-        ['Gasoil', finalTotals.carburant.toFixed(2)],
-        ['Entretien et réparations', '0.00'],
-        ['Autres dépenses', finalTotals.autres.toFixed(2)],
-        ['Total des dépenses', finalTotals.totalGeneral.toFixed(2)],
-        ['Reste disponible', solde.toFixed(2)],
-      ],
-      theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
-      margin: { left: 14, right: 200 }
-    });
-
-    // DETAILED TABLE
+    // 2. MAIN TABLE (Right after Logo)
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
@@ -231,10 +198,10 @@ export const EnveloppeFinanciereView = () => {
         ['Qt', 'Prix U.', 'Total', 'Qt', 'Prix U.', 'Total']
       ],
       body: tableBody,
-      startY: doc.lastAutoTable.finalY + 10,
+      startY: 25, // Starts right below the logo
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 1.5, halign: 'center', valign: 'middle' },
-      headStyles: { fillColor: [60, 179, 143], textColor: 255, fontStyle: 'bold' },
+      headStyles: { fillColor: [40, 40, 40], textColor: 255, fontStyle: 'bold' },
       columnStyles: {
         0: { cellWidth: 15 }, 1: { cellWidth: 20 }, 2: { cellWidth: 20 }, 3: { cellWidth: 25 },
         4: { cellWidth: 20 }, 5: { cellWidth: 20 }, 6: { cellWidth: 25 }, 7: { cellWidth: 25 },
@@ -242,7 +209,26 @@ export const EnveloppeFinanciereView = () => {
       }
     });
 
-    // PROOF IMAGES
+    // 3. SUMMARY TEXT (Below the table)
+    const finalY = doc.lastAutoTable.finalY + 15;
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("RÉCAPITULATIF DE L'ENVELOPPE", 14, finalY);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Bénéficiaire : ${reportHeader.beneficiaire || '................................'}`, 14, finalY + 8);
+    doc.text(`Montant de l'enveloppe allouée : ${alloue.toFixed(2)} DH`, 14, finalY + 14);
+    doc.text(`Total dépensé : ${finalTotals.totalGeneral.toFixed(2)} DH`, 14, finalY + 20);
+    doc.text(`Solde restant : ${solde.toFixed(2)} DH`, 14, finalY + 26);
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Objet : Suivi de l'utilisation des fonds alloués par l'entreprise, détaillant les dépenses effectuées et le solde restant disponible.", 14, finalY + 34);
+
+    // 4. PROOF IMAGES (Page 2)
     const imagesToPrint = [];
     processedRows.forEach((row, index) => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
@@ -255,6 +241,7 @@ export const EnveloppeFinanciereView = () => {
       doc.addPage();
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
       doc.text("JUSTIFICATIFS DES DÉPENSES (PREUVES)", 148, 15, { align: 'center' });
 
       let currentY = 30;
@@ -338,7 +325,6 @@ export const EnveloppeFinanciereView = () => {
         </div>
       </div>
 
-      {/* ✅ DATE FIELD REMOVED FROM UI */}
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
