@@ -33,58 +33,76 @@ const buildBody = (entries) => {
   const body = [];
   const merges = [];
 
-  entries.forEach((entry) => {
-    const mList =
-      entry.measurements && entry.measurements.length > 0
+  // Expand entries to calculate rows
+  const expanded = entries.map(entry => {
+    const mList = entry.measurements && entry.measurements.length > 0
         ? entry.measurements
-        : [{
-            l: entry.l || '',
-            L: entry.L || '',
-            nature: entry.nature || entry.terrainNature || ''
-          }];
-
-    const startRow = body.length;
+        : [{ l: entry.l || '', L: entry.L || '', nature: entry.nature || entry.terrainNature || '' }];
     const pts = formatPoints(entry.points);
-
-    mList.forEach((m, i) => {
-      const isFirst = i === 0;
-      body.push([
-        isFirst ? (entry.date || '') : '',
-        isFirst ? (entry.reference || '') : '',
-        isFirst ? (entry.type || '') : '',
-        m.nature || '',
-        m.l || '',
-        m.L || '',
-        pts.x,
-        pts.y
-      ]);
-    });
-
-    merges.push({ startRow, rowSpan: mList.length });
+    const totalRows = Math.max(mList.length, entry.points ? entry.points.length : 1);
+    return { entry, mList, pts, totalRows };
   });
+
+  // Group by Date
+  let currentRow = 0;
+  let i = 0;
+  while (i < expanded.length) {
+    let j = i + 1;
+    let dateSpan = expanded[i].totalRows;
+    while (j < expanded.length && expanded[j].entry.date === expanded[i].entry.date) {
+      dateSpan += expanded[j].totalRows;
+      j++;
+    }
+
+    if (dateSpan > 1) {
+      merges.push({ col: 0, startRow: currentRow, rowSpan: dateSpan });
+    }
+
+    for (let k = i; k < j; k++) {
+      const { entry, mList, pts, totalRows } = expanded[k];
+
+      if (totalRows > 1) {
+        merges.push({ col: 1, startRow: currentRow, rowSpan: totalRows }); // Ref
+        merges.push({ col: 2, startRow: currentRow, rowSpan: totalRows }); // Type
+      }
+
+      mList.forEach((m, idx) => {
+        const isFirst = idx === 0;
+        body.push([
+          isFirst && k === i ? (entry.date || '') : '', 
+          isFirst ? (entry.reference || '') : '',
+          isFirst ? (entry.type || '') : '',
+          m.nature || '',
+          m.l || '',
+          m.L || '',
+          pts.x,
+          pts.y
+        ]);
+      });
+      currentRow += totalRows;
+    }
+    i = j;
+  }
 
   return { body, merges };
 };
 
 export const generateReportPDF = async (filteredList, selectedMonth) => {
-  const doc = new jsPDF();
+  const doc = new jsPDF('landscape', 'mm', 'a4');
   const loadingToast = toast.loading("Génération du PDF...");
 
   try {
     const logoData = await toBase64('/logo-hydracane.png');
-    doc.addImage(logoData, 'PNG', 15, 10, 45, 15);
+    doc.addImage(logoData, 'PNG', 14, 10, 30, 12);
   } catch {
     console.warn("Logo non trouvé");
   }
 
-  const title =
-    selectedMonth === 'Tous'
-      ? "Rapport Mensuel - Global"
-      : `Rapport Mensuel - ${selectedMonth}`;
+  const title = selectedMonth === 'Tous' ? "Rapport Mensuel - Global" : `Rapport Mensuel - ${selectedMonth}`;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text(title, 105, 25, { align: 'center' });
+  doc.text(title, 148, 25, { align: 'center' });
 
   const { body, merges } = buildBody(filteredList);
 
@@ -103,31 +121,9 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     },
 
     didParseCell: function (data) {
-      if (
-        data.cell.section === 'body' &&
-        data.column.index >= 0 &&
-        data.column.index <= 2
-      ) {
-        merges.forEach(({ startRow, rowSpan }) => {
-          if (rowSpan > 1) {
-            if (data.row.index === startRow) {
-              data.cell.rowSpan = rowSpan;
-            } else if (
-              data.row.index > startRow &&
-              data.row.index < startRow + rowSpan
-            ) {
-              data.cell.text = [''];
-            }
-          }
-        });
-      }
-
-      if (
-        data.cell.section === 'body' &&
-        (data.column.index === 6 || data.column.index === 7)
-      ) {
-        merges.forEach(({ startRow, rowSpan }) => {
-          if (rowSpan > 1) {
+      if (data.cell.section === 'body') {
+        merges.forEach(({ col, startRow, rowSpan }) => {
+          if (data.column.index === col) {
             if (data.row.index === startRow) {
               data.cell.rowSpan = rowSpan;
               data.cell.styles.valign = 'middle';
@@ -143,14 +139,14 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     },
 
     columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 18 },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 12 },
-      5: { cellWidth: 12 },
-      6: { cellWidth: 40 },
-      7: { cellWidth: 28 }
+      0: { cellWidth: 25 },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 15 },
+      5: { cellWidth: 15 },
+      6: { cellWidth: 35 },
+      7: { cellWidth: 30 }
     },
 
     styles: {
