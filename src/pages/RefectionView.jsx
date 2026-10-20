@@ -3,7 +3,7 @@ import { generateReportPDF } from '../pdfGenerator';
 import { useRefections } from '../hooks/useRefections';
 import TopoMapPicker from '../components/TopoMapPicker';
 import {
-  Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X, MapPin, Pencil
+  Wrench, FileDown, Save, Trash2, Loader2, Search, Plus, X, MapPin, Pencil, Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,6 +19,9 @@ export const RefectionView = () => {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapPoints, setMapPoints] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  
+  // ✅ NEW: State for the Month Filter
+  const [selectedMonth, setSelectedMonth] = useState('');
 
   const [formData, setFormData] = useState({
     date: '',
@@ -135,14 +138,30 @@ export const RefectionView = () => {
       toast.error('No entries to export');
       return;
     }
-    const month = filtered[0]?.date?.slice(0, 7) || 'Tous';
-    generateReportPDF(filtered, month);
+    // ✅ Format the month for the PDF title (e.g., "2026-10" -> "Octobre 2026")
+    let titleMonth = 'Tous';
+    if (selectedMonth) {
+      const dateObj = new Date(selectedMonth + "-01");
+      titleMonth = dateObj.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    } else if (filtered[0]?.date) {
+      const dateObj = new Date(filtered[0].date);
+      titleMonth = dateObj.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    }
+    generateReportPDF(filtered, titleMonth);
   };
 
+  // ✅ Filter by Search AND by Month
   const filtered = useMemo(() => {
-    if (!search.trim()) return refections;
+    let result = refections;
+
+    if (selectedMonth) {
+      result = result.filter((r) => (r.date || '').startsWith(selectedMonth));
+    }
+
+    if (!search.trim()) return result;
+
     const q = search.toLowerCase();
-    return refections.filter((r) => {
+    return result.filter((r) => {
       const measurementsText = (r.measurements || [])
         .map((m) => `${m.l} ${m.L} ${m.nature || ''}`)
         .join(' ');
@@ -157,7 +176,39 @@ export const RefectionView = () => {
         pointsText.toLowerCase().includes(q)
       );
     });
-  }, [refections, search]);
+  }, [refections, search, selectedMonth]);
+
+  const groupedFiltered = useMemo(() => {
+    if (!filtered) return [];
+    
+    const processed = filtered.map(r => {
+      const mList = r.measurements && r.measurements.length > 0
+          ? r.measurements
+          : [{ l: r.l || '', L: r.L || '', nature: r.terrainNature || r.nature || '' }];
+      const pts = r.points && r.points.length > 0 ? r.points : [null];
+      return { ...r, mList, pts, totalRows: Math.max(mList.length, pts.length) };
+    });
+
+    const result = [];
+    let i = 0;
+    while (i < processed.length) {
+      let j = i + 1;
+      let dateSpan = processed[i].totalRows;
+      while (j < processed.length && processed[j].date === processed[i].date) {
+        dateSpan += processed[j].totalRows;
+        j++;
+      }
+      for (let k = i; k < j; k++) {
+        result.push({
+          ...processed[k],
+          dateSpan,
+          isFirstOfDate: k === i
+        });
+      }
+      i = j;
+    }
+    return result;
+  }, [filtered]);
 
   const inputClass =
     "w-full bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition";
@@ -215,7 +266,6 @@ export const RefectionView = () => {
           </div>
         </div>
 
-        {/* MEASUREMENTS */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <label className={labelClass}>Measurements (l × L — each with its own nature)</label>
@@ -336,6 +386,17 @@ export const RefectionView = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            
+            {/* ✅ NEW MONTH FILTER */}
+            <div className="relative">
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full sm:w-auto bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+              />
+            </div>
+
             <div className="relative">
               <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -343,7 +404,7 @@ export const RefectionView = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search entries..."
-                className="w-full sm:w-64 bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                className="w-full sm:w-48 bg-slate-900/60 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
               />
             </div>
 
@@ -363,15 +424,15 @@ export const RefectionView = () => {
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-center text-slate-500 py-10 text-sm">
-            {search ? 'No matching entries' : 'No entries yet'}
+            {search || selectedMonth ? 'No matching entries' : 'No entries yet'}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-slate-300">
               <thead>
                 <tr className="border-b border-slate-700 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="text-left py-2 px-2">Date</th>
-                  <th className="text-left py-2 px-2">Ref</th>
+                  <th className="text-left py-2 px-2 border-r border-slate-700">Date</th>
+                  <th className="text-left py-2 px-2 border-r border-slate-700">Ref</th>
                   <th className="text-left py-2 px-2">Type</th>
                   <th className="text-left py-2 px-2">Nature</th>
                   <th className="text-center py-2 px-2">l</th>
@@ -385,14 +446,9 @@ export const RefectionView = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => {
-                  const mList =
-                    r.measurements && r.measurements.length > 0
-                      ? r.measurements
-                      : [{ l: r.l || '', L: r.L || '', nature: r.terrainNature || r.nature || '' }];
-                  const pts = r.points && r.points.length > 0 ? r.points : [null];
-                  const totalRows = Math.max(mList.length, pts.length);
-                  const isEditingRow = editingId === r.id;
+                {groupedFiltered.map((r) => {
+                  const { mList, pts, totalRows, dateSpan, isFirstOfDate, id } = r;
+                  const isEditingRow = editingId === id;
 
                   const rows = [];
                   for (let i = 0; i < totalRows; i++) {
@@ -403,12 +459,15 @@ export const RefectionView = () => {
                       m.l && m.L
                         ? (parseFloat(m.l) * parseFloat(m.L)).toFixed(2)
                         : '';
+                        
                     rows.push(
-                      <tr key={`${r.id}-${i}`} className={`border-b border-slate-800 hover:bg-white/5 ${isEditingRow ? 'bg-yellow-500/5' : ''}`}>
+                      <tr key={`${id}-${i}`} className={`border-b border-slate-800 hover:bg-white/5 ${isEditingRow ? 'bg-yellow-500/5' : ''}`}>
                         {isFirst && (
                           <>
-                            <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.date}</td>
-                            <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.reference}</td>
+                            {isFirstOfDate && (
+                              <td rowSpan={dateSpan} className="py-2 px-2 align-top border-r border-slate-700">{r.date}</td>
+                            )}
+                            <td rowSpan={totalRows} className="py-2 px-2 align-top border-r border-slate-700">{r.reference}</td>
                             <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.type}</td>
                           </>
                         )}
