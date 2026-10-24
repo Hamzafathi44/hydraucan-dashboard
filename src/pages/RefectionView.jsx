@@ -8,7 +8,7 @@ import {
 import { toast } from 'sonner';
 
 const NATURES = [
-  'argile', 'Béton', 'Pavé', 'Goudron', 'Faience'
+  'argile', 'Béton', 'Pavé', 'Goudron', 'Faience', 'Revsol'
 ];
 
 export const RefectionView = () => {
