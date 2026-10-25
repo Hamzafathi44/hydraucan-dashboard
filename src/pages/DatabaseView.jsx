@@ -14,7 +14,7 @@ export const DatabaseView = ({
     >
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-white mb-2">Base de données complète</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">Base de données complète</h1>
           <p className="text-slate-400 text-sm font-medium">Consultez l'historique complet de tous les travaux enregistrés.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -31,7 +31,7 @@ export const DatabaseView = ({
         </div>
       </header>
 
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-hidden shadow-lg">
+      <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-x-auto shadow-lg">
         <div className="data-row bg-white/5 border-b-2 border-line">
           <div className="col-header">Date</div>
           <div className="col-header">Références</div>

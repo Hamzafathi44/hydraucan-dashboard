@@ -35,7 +35,7 @@ export const MonthlyReportView = ({
       {/* Top Header */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-white mb-2">RAPPORT MENSUEL</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">RAPPORT MENSUEL</h1>
           <p className="text-slate-400 text-sm font-medium">Gérez et exportez vos rapports de travail mensuels avec précision.</p>
         </div>
 
@@ -61,7 +61,7 @@ export const MonthlyReportView = ({
       <Motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 mb-12 shadow-lg"
+        className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 mb-12 shadow-lg"
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -125,12 +125,12 @@ export const MonthlyReportView = ({
               {natureOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
-          <div className="col-span-1 md:col-span-3 lg:col-span-6 flex gap-2 w-full mt-2">
+          <div className="col-span-1 md:col-span-3 lg:col-span-6 flex flex-col sm:flex-row gap-2 w-full mt-2">
             <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
               {isSubmitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
               {editingId ? "MAJ" : "Ajouter"}
             </button>
-            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="px-4 flex-none border border-line bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
+            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="px-4 sm:flex-none justify-center border border-line bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
               <FileText className="w-4 h-4" /> {showFicheDetails ? "Masquer la Fiche EAU" : "Ajouter les détails de la Fiche EAU"}
             </button>
           </div>
@@ -212,7 +212,7 @@ export const MonthlyReportView = ({
             <Filter className="w-4 h-4 text-slate-400" />
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Filtrer les Enregistrements</h2>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-md">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-full sm:max-w-md">
             {months.map(m => (
               <button 
                 key={m} 
@@ -225,7 +225,7 @@ export const MonthlyReportView = ({
           </div>
         </div>
 
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-hidden shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-x-auto shadow-lg">
           <div className="data-row bg-white/5 border-b-2 border-line">
             <div className="col-header">Date</div>
             <div className="col-header">Références</div>

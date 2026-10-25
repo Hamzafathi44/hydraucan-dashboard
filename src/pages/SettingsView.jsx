@@ -11,13 +11,13 @@ export const SettingsView = ({ typeOptions, natureOptions, handleAddOption, hand
       className="max-w-4xl mx-auto"
     >
       <header className="mb-12">
-        <h1 className="text-3xl font-black tracking-tight text-white mb-2">Paramètres de l'Application</h1>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">Paramètres de l'Application</h1>
         <p className="text-slate-400 text-sm font-medium">Gérez vos options de menu déroulant et vos préférences système.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Type Options */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <PlusCircle className="w-4 h-4 text-cyan-500" />
@@ -38,7 +38,7 @@ export const SettingsView = ({ typeOptions, natureOptions, handleAddOption, hand
         </div>
 
         {/* Nature Options */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <PlusCircle className="w-4 h-4 text-cyan-500" />

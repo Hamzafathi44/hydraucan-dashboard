@@ -19,13 +19,83 @@ const toBase64 = (url) => {
   });
 };
 
+const formatPoints = (points) => {
+  if (!points || points.length === 0) return { x: '', y: '' };
+  const xText = points
+    .map((p) => `${p.label || ''}: ${p.x ?? ''}`)
+    .join('\n');
+  const yText = points
+    .map((p) => `${p.y ?? ''}`)
+    .join('\n');
+  return { x: xText, y: yText };
+};
+
+const buildBody = (entries) => {
+  const body = [];
+  const merges = [];
+
+  const expanded = entries.map(entry => {
+    const mList = entry.measurements && entry.measurements.length > 0
+        ? entry.measurements
+        : [{ l: entry.l || '', L: entry.L || '', nature: entry.nature || entry.terrainNature || '' }];
+    const pts = formatPoints(entry.points);
+    const totalRows = Math.max(mList.length, entry.points ? entry.points.length : 1);
+    return { entry, mList, pts, totalRows };
+  });
+
+  // Group by Date
+  let currentRow = 0;
+  let i = 0;
+  while (i < expanded.length) {
+    let j = i + 1;
+    let dateSpan = expanded[i].totalRows;
+    while (j < expanded.length && expanded[j].entry.date === expanded[i].entry.date) {
+      dateSpan += expanded[j].totalRows;
+      j++;
+    }
+
+    if (dateSpan > 1) {
+      merges.push({ col: 0, startRow: currentRow, rowSpan: dateSpan });
+    }
+
+    for (let k = i; k < j; k++) {
+      const { entry, mList, pts, totalRows } = expanded[k];
+
+      if (totalRows > 1) {
+        merges.push({ col: 1, startRow: currentRow, rowSpan: totalRows }); // Ref
+        merges.push({ col: 2, startRow: currentRow, rowSpan: totalRows }); // Type
+        merges.push({ col: 3, startRow: currentRow, rowSpan: totalRows }); // Matériel Utilisé
+      }
+
+      mList.forEach((m, idx) => {
+        const isFirst = idx === 0;
+        body.push([
+          isFirst && k === i ? (entry.date || '') : '',
+          isFirst ? (entry.reference || '') : '',
+          isFirst ? (entry.type || '') : '',
+          isFirst ? (entry.material || '') : '',
+          m.nature || '',
+          m.l || '',
+          m.L || '',
+          pts.x,
+          pts.y
+        ]);
+      });
+      currentRow += totalRows;
+    }
+    i = j;
+  }
+
+  return { body, merges };
+};
+
 export const generateReportPDF = async (filteredList, selectedMonth) => {
-  const doc = new jsPDF();
+  const doc = new jsPDF('landscape', 'mm', 'a4');
   const loadingToast = toast.loading("Génération du PDF...");
 
   try {
     const logoData = await toBase64('/logo-hydracane.png');
-    doc.addImage(logoData, 'PNG', 15, 10, 45, 15);
+    doc.addImage(logoData, 'PNG', 14, 10, 30, 12);
   } catch {
     console.warn("Logo non trouvé");
   }
@@ -34,34 +104,56 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text(title, 105, 25, { align: 'center' });
+  doc.text(title, 148, 25, { align: 'center' });
 
-  const bodyData = filteredList.map(item => [
-    item.date,
-    item.reference,
-    item.type,
-    item.material,
-    item.nature
-  ]);
+  const { body, merges } = buildBody(filteredList);
 
   autoTable(doc, {
-    head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature"]],
-    body: bodyData,
+    head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature", "l", "L", "X", "Y"]],
+    body: body,
     startY: 40,
     theme: 'grid',
+    headStyles: {
+      fillColor: [60, 179, 143],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle'
+    },
     didParseCell: function (data) {
-      if (data.column.index === 0 && data.cell.section === 'body') {
-        const rowIndex = data.row.index;
-        const currentDate = data.cell.raw;
-        let rowSpan = 1;
-        for (let i = rowIndex + 1; i < data.table.body.length; i++) {
-          if (data.table.body[i].cells[0].raw === currentDate) { rowSpan++; } else { break; }
-        }
-        if (rowSpan > 1) { data.cell.rowSpan = rowSpan; }
-        if (rowIndex > 0 && data.table.body[rowIndex - 1].cells[0].raw === currentDate) { data.cell.text = ['']; }
+      if (data.cell.section === 'body') {
+        merges.forEach(({ col, startRow, rowSpan }) => {
+          if (data.column.index === col) {
+            if (data.row.index === startRow) {
+              data.cell.rowSpan = rowSpan;
+              data.cell.styles.valign = 'middle';
+            } else if (
+              data.row.index > startRow &&
+              data.row.index < startRow + rowSpan
+            ) {
+              data.cell.text = [''];
+            }
+          }
+        });
       }
     },
-    styles: { valign: 'middle', halign: 'center', fontSize: 10 }
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 25 },
+      5: { cellWidth: 15 },
+      6: { cellWidth: 15 },
+      7: { cellWidth: 35 },
+      8: { cellWidth: 30 }
+    },
+    styles: {
+      valign: 'middle',
+      halign: 'center',
+      fontSize: 9,
+      cellPadding: 2
+    }
   });
 
   doc.save(`${title}.pdf`);

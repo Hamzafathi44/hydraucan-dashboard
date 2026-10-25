@@ -15,7 +15,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
       className="space-y-8"
     >
       <header className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight text-white mb-2">Tableau de Bord Analytique</h1>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">Tableau de Bord Analytique</h1>
         <p className="text-slate-400 text-sm font-medium">Analyse détaillée des performances et de la consommation du mois en cours.</p>
       </header>
 
@@ -49,7 +49,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Work Schedule Chart */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <CalendarIcon className="w-4 h-4 text-cyan-500" />
             <h2 className="text-xs font-bold uppercase tracking-widest text-white">Calendrier de Travail (Mois en cours)</h2>
@@ -87,7 +87,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
         </div>
 
         {/* Nature Distribution Chart */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <PieChartIcon className="w-4 h-4 text-cyan-500" />
             <h2 className="text-xs font-bold uppercase tracking-widest text-white">Répartition par Nature</h2>
@@ -119,7 +119,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Material Consumption */}
-        <div className="lg:col-span-1 bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="lg:col-span-1 bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <Activity className="w-4 h-4 text-cyan-500" />
             <h2 className="text-xs font-bold uppercase tracking-widest text-white">Consommation de Matériel</h2>
@@ -157,13 +157,13 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
         </div>
 
         {/* Nature Summary Table */}
-        <div className="lg:col-span-2 bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="lg:col-span-2 bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <BarChart3 className="w-4 h-4 text-cyan-500" />
             <h2 className="text-xs font-bold uppercase tracking-widest text-white">Résumé des Travaux par Nature</h2>
           </div>
-          <div className="overflow-hidden">
-            <table className="w-full text-left">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-left">
               <thead>
                 <tr className="border-b border-line">
                   <th className="pb-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Nature du Travail</th>

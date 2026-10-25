@@ -499,7 +499,7 @@ export const EnveloppeFinanciereView = () => {
           <p className="text-center text-slate-500 py-10 text-sm">Aucun rapport sauvegardé</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-slate-300">
+            <table className="w-full min-w-[720px] text-xs text-slate-300">
               <thead>
                 <tr className="border-b border-slate-700 text-slate-400 uppercase tracking-wider text-[10px]">
                   <th className="text-left py-2 px-2">Bénéficiaire</th>

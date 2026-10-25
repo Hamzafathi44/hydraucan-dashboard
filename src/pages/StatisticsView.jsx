@@ -132,7 +132,7 @@ export const StatisticsView = ({ dataList }) => {
       className="space-y-8"
     >
       <header className="mb-4">
-        <h1 className="text-3xl font-black tracking-tight text-white mb-2">Toutes les Statistiques</h1>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">Toutes les Statistiques</h1>
         <p className="text-slate-400 text-sm font-medium">Analyse approfondie et historique global des interventions.</p>
       </header>
       
@@ -142,7 +142,7 @@ export const StatisticsView = ({ dataList }) => {
           <Filter className="w-4 h-4 text-slate-400" />
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Filtrer par Mois</h2>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-xl">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-full sm:max-w-xl">
           {months.map(m => (
             <button 
               key={m} 
@@ -160,7 +160,7 @@ export const StatisticsView = ({ dataList }) => {
       </div>
 
       {/* Row 1: Area Chart (Full Width) */}
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+      <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
         <div className="flex items-center gap-2 mb-6">
           <TrendingUp className="w-5 h-5 text-cyan-500" />
           <h2 className="text-sm font-bold uppercase tracking-widest text-white">Évolution des interventions (12 Mois)</h2>
@@ -187,7 +187,7 @@ export const StatisticsView = ({ dataList }) => {
       {/* Row 2: Type Pie Chart & Pipe Materials Bar Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Type Distribution */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <PieChartIcon className="w-5 h-5 text-cyan-500" />
             <h2 className="text-sm font-bold uppercase tracking-widest text-white">Répartition par Type</h2>
@@ -222,7 +222,7 @@ export const StatisticsView = ({ dataList }) => {
         </div>
 
         {/* Pipe Materials */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <BarChart3 className="w-5 h-5 text-cyan-500" />
             <h2 className="text-sm font-bold uppercase tracking-widest text-white">Matériaux des Conduites (Fuites)</h2>
@@ -249,7 +249,7 @@ export const StatisticsView = ({ dataList }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Consumed Materials */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <Wrench className="w-5 h-5 text-cyan-500" />
             <h2 className="text-sm font-bold uppercase tracking-widest text-white">Matériels Consommés</h2>
@@ -276,7 +276,7 @@ export const StatisticsView = ({ dataList }) => {
         </div>
 
         {/* Flow Rates (Débit) */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
           <div className="flex items-center gap-2 mb-6">
             <Activity className="w-5 h-5 text-cyan-500" />
             <h2 className="text-sm font-bold uppercase tracking-widest text-white">Répartition par Débit</h2>

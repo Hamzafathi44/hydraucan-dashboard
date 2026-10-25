@@ -83,7 +83,7 @@ export const PointageView = ({ user }) => {
     >
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-white mb-2">GESTION DES ÉQUIPES</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">GESTION DES ÉQUIPES</h1>
           <p className="text-slate-400 text-sm font-medium">Contrôlez les heures de travail de vos groupes et ajustez indépendamment.</p>
         </div>
       </header>
@@ -149,7 +149,7 @@ export const PointageView = ({ user }) => {
         <div className="xl:col-span-3">
           <Motion.section 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-8 shadow-lg min-h-[400px]"
+            className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg min-h-[400px]"
           >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
               <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export const PointageView = ({ user }) => {
           )}
         </AnimatePresence>
 
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-hidden shadow-lg">
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line overflow-x-auto shadow-lg">
           <div className="data-row bg-white/5 border-b-2 border-line">
             <div className="col-header flex gap-2"><CalendarIcon className="w-3 h-3"/> Date</div>
             <div className="col-header">Ouvrier</div>
