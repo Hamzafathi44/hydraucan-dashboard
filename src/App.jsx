@@ -22,11 +22,11 @@ import { EnveloppeFinanciereView } from './pages/EnveloppeFinanciereView';
 // استيراد مكون استيراد الإكسل الجديد
 import SRMExcelImporter from './components/SRMExcelImporter';
 
-const AuthenticatedApp = ({ user, activeView, setActiveView }) => {
+const AuthenticatedApp = ({ user, activeView, setActiveView, theme, onToggleTheme }) => {
   const dashboardData = useDashboardData(user);
 
   return (
-    <DashboardLayout activeView={activeView} setActiveView={setActiveView}>
+    <DashboardLayout activeView={activeView} setActiveView={setActiveView} theme={theme} onToggleTheme={onToggleTheme}>
       <AnimatePresence mode="wait">
         {activeView === 'home' && (
           <DashboardHome 
@@ -81,6 +81,16 @@ function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeView, setActiveView] = useState('home');
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('hydraucan-theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; }
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+    try { localStorage.setItem('hydraucan-theme', theme); } catch {}
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -92,7 +102,7 @@ function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#EEF2F7] flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-[#0F172A]' : 'bg-[#EEF2F7]'}`}>
         <span className="w-8 h-8 border-4 border-[#1A2B56]/30 border-t-[#1A2B56] rounded-full animate-spin" />
       </div>
     );
@@ -100,18 +110,23 @@ function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#EEF2F7] flex flex-col">
+      <div className={`min-h-screen flex flex-col ${theme === 'dark' ? 'bg-[#0F172A]' : 'bg-[#EEF2F7]'}`}>
         <header className="bg-[#16294D] text-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
             <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="h-10 w-auto object-contain brightness-200" />
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300" /> Espace employés
-            </span>
+            <div className="flex items-center gap-3">
+              <button onClick={toggleTheme} aria-label="Changer de thème" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-bold hover:bg-white/20 transition">
+                {theme === 'dark' ? '☀️ Clair' : '🌙 Sombre'}
+              </button>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-300" /> Espace employés
+              </span>
+            </div>
           </div>
         </header>
         <main className="flex-1 flex items-center justify-center px-4 py-10 sm:py-14">
           <Toaster position="top-center" richColors />
-          <LoginForm />
+          <LoginForm theme={theme} />
         </main>
         <footer className="pb-6 text-center text-xs text-slate-500">
           Usage interne uniquement · Réservé aux employés Hydraucan
@@ -123,7 +138,7 @@ function App() {
   return (
     <>
       <Toaster position="top-right" richColors />
-      <AuthenticatedApp user={user} activeView={activeView} setActiveView={setActiveView} />
+      <AuthenticatedApp user={user} activeView={activeView} setActiveView={setActiveView} theme={theme} onToggleTheme={toggleTheme} />
     </>
   );
 }

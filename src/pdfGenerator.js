@@ -73,7 +73,7 @@ const buildBody = (entries) => {
           isFirst && k === i ? (entry.date || '') : '',
           isFirst ? (entry.reference || '') : '',
           isFirst ? (entry.type || '') : '',
-          isFirst ? (entry.material || '') : '',
+          isFirst ? (entry.address || entry.material || '') : '',
           m.nature || '',
           m.l || '',
           m.L || '',
@@ -106,10 +106,12 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
   doc.setFontSize(14);
   doc.text(title, 148, 25, { align: 'center' });
 
+  const hasAddress = filteredList && filteredList.some((e) => e.address);
+  const materialHeader = hasAddress ? "Adresse" : "Matériel Utilisé";
   const { body, merges } = buildBody(filteredList);
 
   autoTable(doc, {
-    head: [["DATE", "Références", "Type", "Matériel Utilisé", "Nature", "l", "L", "X", "Y"]],
+    head: [["DATE", "Références", "Type", materialHeader, "Nature", "l", "L", "X", "Y"]],
     body: body,
     startY: 40,
     theme: 'grid',

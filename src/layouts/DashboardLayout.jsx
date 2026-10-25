@@ -44,7 +44,7 @@ const VIEW_TITLES = {
   settings: 'Paramètres',
 };
 
-export const DashboardLayout = ({ children, activeView, setActiveView }) => {
+export const DashboardLayout = ({ children, activeView, setActiveView, theme, onToggleTheme }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const go = (view) => { setActiveView(view); setIsMobileMenuOpen(false); };
 
@@ -115,9 +115,16 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-700">Hydraucan · Interne</p>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{VIEW_TITLES[activeView] || 'Tableau de bord'}</h2>
           </div>
-          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Employés uniquement
-          </span>
+          <div className="flex items-center gap-2">
+            {onToggleTheme && (
+              <button onClick={onToggleTheme} aria-label="Changer de thème" className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition">
+                {theme === 'dark' ? '☀️ Clair' : '🌙 Sombre'}
+              </button>
+            )}
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Employés uniquement
+            </span>
+          </div>
         </div>
 
         {children}

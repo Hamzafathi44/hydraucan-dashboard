@@ -4,7 +4,8 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/aut
 import { auth } from '../firebase';
 import { toast } from 'sonner';
 
-export const LoginForm = () => {
+export const LoginForm = ({ theme }) => {
+  const isDark = theme === 'dark';
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,42 +42,42 @@ export const LoginForm = () => {
   };
 
   return (
-    <div className="w-full max-w-[440px] px-5 sm:px-8 py-8 sm:py-10 flex flex-col bg-white border border-slate-200 shadow-xl shadow-slate-900/5 rounded-3xl my-auto">
+    <div className={`w-full max-w-[440px] px-5 sm:px-8 py-8 sm:py-10 flex flex-col border shadow-xl rounded-3xl my-auto ${isDark ? 'bg-slate-900 border-slate-700 shadow-black/40' : 'bg-white border-slate-200 shadow-slate-900/5'}`}>
       {/* Main Content */}
       <div className="flex-1 flex flex-col justify-center">
         <div className="text-center mb-8">
           <img src="/logo-hydracane.png" alt="HYDRAUCAN Logo" className="h-14 w-auto object-contain mx-auto mb-4" />
-          <h1 className="text-xl font-black text-slate-900">Connexion employés</h1>
-          <p className="text-sm text-slate-500 mt-1">Accès réservé aux employés Hydraucan</p>
+          <h1 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Connexion employés</h1>
+          <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Accès réservé aux employés Hydraucan</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email / Identifiant</label>
+            <label className={`text-[11px] font-bold uppercase tracking-widest ml-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Email / Identifiant</label>
             <input
               type="text"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-all shadow-sm"
+              className={`w-full px-5 py-4 border rounded-2xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-all shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
               placeholder="admin (ou adresse complète)"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Mot de passe</label>
+              <label className={`text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Mot de passe</label>
             </div>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-all shadow-sm"
+              className={`w-full px-5 py-4 border rounded-2xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-all shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
               placeholder="••••••••"
             />
             <div className="text-right mt-2">
-              <button type="button" onClick={handleForgotPassword} className="text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors">
+              <button type="button" onClick={handleForgotPassword} className={`text-[11px] font-bold transition-colors ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-700'}`}>
                 Mot de passe oublié ?
               </button>
             </div>

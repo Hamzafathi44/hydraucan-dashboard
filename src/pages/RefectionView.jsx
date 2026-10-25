@@ -26,7 +26,8 @@ export const RefectionView = () => {
   const [formData, setFormData] = useState({
     date: '',
     reference: '',
-    type: 'Refection'
+    type: 'Refection',
+    address: ''
   });
 
   const [measurements, setMeasurements] = useState([
@@ -53,7 +54,7 @@ export const RefectionView = () => {
   };
 
   const resetForm = () => {
-    setFormData({ date: '', reference: '', type: 'Refection' });
+    setFormData({ date: '', reference: '', type: 'Refection', address: '' });
     setMeasurements([{ l: '', L: '', nature: '' }]);
     setMapPoints([]);
     setEditingId(null);
@@ -63,7 +64,8 @@ export const RefectionView = () => {
     setFormData({
       date: entry.date || '',
       reference: entry.reference || '',
-      type: entry.type || 'Refection'
+      type: entry.type || 'Refection',
+      address: entry.address || ''
     });
     
     setMeasurements(
@@ -172,6 +174,7 @@ export const RefectionView = () => {
         (r.date || '').toLowerCase().includes(q) ||
         (r.reference || '').toLowerCase().includes(q) ||
         (r.type || '').toLowerCase().includes(q) ||
+        (r.address || '').toLowerCase().includes(q) ||
         measurementsText.toLowerCase().includes(q) ||
         pointsText.toLowerCase().includes(q)
       );
@@ -263,6 +266,13 @@ export const RefectionView = () => {
               <option value="Leak">Leak</option>
               <option value="Maintenance">Maintenance</option>
             </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 mt-4">
+          <div>
+            <label className={labelClass}>Adresse</label>
+            <input name="address" value={formData.address || ''} onChange={handleChange} placeholder="Adresse du chantier, ex: Rue, Quartier, Ville" className={inputClass} />
           </div>
         </div>
 
@@ -434,6 +444,7 @@ export const RefectionView = () => {
                   <th className="text-left py-2 px-2 border-r border-slate-700">Date</th>
                   <th className="text-left py-2 px-2 border-r border-slate-700">Ref</th>
                   <th className="text-left py-2 px-2">Type</th>
+                  <th className="text-left py-2 px-2">Adresse</th>
                   <th className="text-left py-2 px-2">Nature</th>
                   <th className="text-center py-2 px-2">l</th>
                   <th className="text-center py-2 px-2">L</th>
@@ -469,6 +480,7 @@ export const RefectionView = () => {
                             )}
                             <td rowSpan={totalRows} className="py-2 px-2 align-top border-r border-slate-700">{r.reference}</td>
                             <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.type}</td>
+                            <td rowSpan={totalRows} className="py-2 px-2 align-top">{r.address || ''}</td>
                           </>
                         )}
                         <td className="py-2 px-2">{m.nature || ''}</td>

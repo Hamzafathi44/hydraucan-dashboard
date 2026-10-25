@@ -154,32 +154,48 @@
 }
 
 /* ---- Company light theme: translate old dark dashboard classes ---- */
-main { background: #EEF2F7; }
-main .bg-slate-900\/40, main .bg-slate-900\/60, main .bg-slate-900\/50, main .bg-slate-900\/30,
-main .bg-slate-900\/80, main .bg-slate-800\/80, main .bg-slate-800\/50, main .bg-slate-800\/40 {
+html:not(.theme-dark) main { background: #EEF2F7; }
+html:not(.theme-dark) main .bg-slate-900\/40, html:not(.theme-dark) main .bg-slate-900\/60, html:not(.theme-dark) main .bg-slate-900\/50, html:not(.theme-dark) main .bg-slate-900\/30,
+html:not(.theme-dark) main .bg-slate-900\/80, html:not(.theme-dark) main .bg-slate-800\/80, html:not(.theme-dark) main .bg-slate-800\/50, html:not(.theme-dark) main .bg-slate-800\/40 {
   background-color: #ffffff !important;
   border-color: #E2E8F0 !important;
 }
-main .bg-white\/5 { background-color: #F8FAFC !important; }
-main .bg-white\/10 { background-color: #F1F5F9 !important; }
-main .bg-slate-50\/50 { background-color: #F8FAFC !important; }
-main .text-white:not(button) { color: #0F172A !important; }
+html:not(.theme-dark) main .bg-white\/5 { background-color: #F8FAFC !important; }
+html:not(.theme-dark) main .bg-white\/10 { background-color: #F1F5F9 !important; }
+html:not(.theme-dark) main .bg-slate-50\/50 { background-color: #F8FAFC !important; }
+html:not(.theme-dark) main .text-white:not(button) { color: #0F172A !important; }
 /* Buttons on a light background must not stay white-on-white: the old
    dark-theme classes bg-white/5 and bg-white/10 become light in this theme. */
-main button.bg-white\/5, main button.bg-white\/10 { color: #0F172A !important; }
-main button.bg-white\/5:hover, main button.bg-white\/10:hover { color: #0F172A !important; }
-main .text-slate-200 { color: #334155 !important; }
-main .text-slate-300 { color: #475569 !important; }
-main input.bg-slate-900\/60, main input.bg-slate-800, main select.bg-slate-900\/60,
-main textarea.bg-slate-900\/60, main .bg-slate-900\/60 input {
+html:not(.theme-dark) main button.bg-white\/5, html:not(.theme-dark) main button.bg-white\/10 { color: #0F172A !important; }
+html:not(.theme-dark) main button.bg-white\/5:hover, html:not(.theme-dark) main button.bg-white\/10:hover { color: #0F172A !important; }
+html:not(.theme-dark) main .text-slate-200 { color: #334155 !important; }
+html:not(.theme-dark) main .text-slate-300 { color: #475569 !important; }
+html:not(.theme-dark) main input.bg-slate-900\/60, html:not(.theme-dark) main input.bg-slate-800, html:not(.theme-dark) main select.bg-slate-900\/60,
+html:not(.theme-dark) main textarea.bg-slate-900\/60, html:not(.theme-dark) main .bg-slate-900\/60 input {
   background-color: #ffffff !important; color: #0F172A !important; border-color: #CBD5E1 !important;
 }
-main .border-slate-700 { border-color: #CBD5E1 !important; }
-main .border-slate-800 { border-color: #E2E8F0 !important; }
-main .border-slate-600 { border-color: #CBD5E1 !important; }
-main .hover\:bg-white\/5:hover { background-color: #F1F5F9 !important; }
-main .hover\:bg-white\/10:hover { background-color: #F1F5F9 !important; }
-main .hover\:bg-slate-800\/40:hover { background-color: #F1F5F9 !important; }
-main .recharts-cartesian-grid line { stroke: #E2E8F0 !important; }
-main .recharts-legend-item-text { fill: #475569 !important; color: #475569 !important; }
-main .recharts-tooltip-wrapper { filter: drop-shadow(0 8px 16px rgba(15,23,42,0.12)); }
+html:not(.theme-dark) main .border-slate-700 { border-color: #CBD5E1 !important; }
+html:not(.theme-dark) main .border-slate-800 { border-color: #E2E8F0 !important; }
+html:not(.theme-dark) main .border-slate-600 { border-color: #CBD5E1 !important; }
+html:not(.theme-dark) main .hover\:bg-white\/5:hover { background-color: #F1F5F9 !important; }
+html:not(.theme-dark) main .hover\:bg-white\/10:hover { background-color: #F1F5F9 !important; }
+html:not(.theme-dark) main .hover\:bg-slate-800\/40:hover { background-color: #F1F5F9 !important; }
+html:not(.theme-dark) main .recharts-cartesian-grid line { stroke: #E2E8F0 !important; }
+html:not(.theme-dark) main .recharts-legend-item-text { fill: #475569 !important; color: #475569 !important; }
+html:not(.theme-dark) main .recharts-tooltip-wrapper { filter: drop-shadow(0 8px 16px rgba(15,23,42,0.12)); }
+
+/* ---- Dark mode (theme-dark): restore original dark look ---- */
+html.theme-dark body { background: #0F172A; color: #E2E8F0; }
+html.theme-dark main { background: #0F172A; }
+html.theme-dark .main-content { background: transparent; }
+html.theme-dark .stat-card { background: #1E293B !important; border-color: #334155 !important; color: #E2E8F0; }
+html.theme-dark .data-value { color: #E2E8F0; }
+html.theme-dark .col-header { color: #94A3B8; }
+html.theme-dark .input-field { background: #1E293B !important; border-color: #334155 !important; color: #F8FAFC !important; }
+html.theme-dark .input-field::placeholder { color: #64748B; }
+html.theme-dark .search-bar { background: #1E293B !important; border-color: #334155 !important; color: #F8FAFC; }
+html.theme-dark .month-pill { background: #1E293B !important; border-color: #334155 !important; color: #CBD5E1; }
+html.theme-dark main .bg-white\/90 { background-color: rgba(15, 23, 42, 0.9) !important; border-color: #334155 !important; }
+html.theme-dark main .text-slate-900 { color: #F8FAFC !important; }
+html.theme-dark .recharts-cartesian-grid line { stroke: #334155 !important; }
+html.theme-dark .recharts-legend-item-text { fill: #CBD5E1 !important; color: #CBD5E1 !important; }
