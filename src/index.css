@@ -164,6 +164,10 @@ main .bg-white\/5 { background-color: #F8FAFC !important; }
 main .bg-white\/10 { background-color: #F1F5F9 !important; }
 main .bg-slate-50\/50 { background-color: #F8FAFC !important; }
 main .text-white:not(button) { color: #0F172A !important; }
+/* Buttons on a light background must not stay white-on-white: the old
+   dark-theme classes bg-white/5 and bg-white/10 become light in this theme. */
+main button.bg-white\/5, main button.bg-white\/10 { color: #0F172A !important; }
+main button.bg-white\/5:hover, main button.bg-white\/10:hover { color: #0F172A !important; }
 main .text-slate-200 { color: #334155 !important; }
 main .text-slate-300 { color: #475569 !important; }
 main input.bg-slate-900\/60, main input.bg-slate-800, main select.bg-slate-900\/60,

@@ -92,7 +92,7 @@ function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center">
+      <div className="min-h-screen bg-[#EEF2F7] flex items-center justify-center">
         <span className="w-8 h-8 border-4 border-[#1A2B56]/30 border-t-[#1A2B56] rounded-full animate-spin" />
       </div>
     );

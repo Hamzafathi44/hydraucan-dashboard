@@ -120,7 +120,7 @@ export const PointageView = ({ user }) => {
           </Motion.section>
 
           {/* Manual Entry Form Toggle */}
-          <button onClick={() => setShowManualForm(!showManualForm)} className="w-full flex items-center justify-center gap-2 p-3 border border-line bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all text-xs">
+          <button onClick={() => setShowManualForm(!showManualForm)} className="w-full flex items-center justify-center gap-2 p-3 border border-line bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold transition-all text-xs">
             <PlusCircle className="w-4 h-4" /> POINTAGE MANUEL (HORS TIMER)
           </button>
 

@@ -218,7 +218,7 @@ export const RefectionView = () => {
   return (
     <section className="p-4 md:p-6" dir="ltr">
       <div className="mb-6">
-        <h2 className="text-xl md:text-2xl font-bold text-white">Refection Works</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-white">Travaux de Réfection</h2>
         <p className="text-sm text-slate-400 mt-1">
           Record renovation and repair works — manual entry
         </p>

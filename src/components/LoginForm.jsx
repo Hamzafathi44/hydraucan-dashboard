@@ -87,7 +87,7 @@ export const LoginForm = () => {
             disabled={isLoading}
             className="w-full py-4 mt-6 bg-[#16294D] hover:bg-[#0F1E3D] text-white text-base font-black rounded-2xl shadow-sm transition-all active:scale-[0.98] tracking-tight flex justify-center items-center"
           >
-            {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Login"}
+            {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Connexion"}
           </button>
         </form>
       </div>

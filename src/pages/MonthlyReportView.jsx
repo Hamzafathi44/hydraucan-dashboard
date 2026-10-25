@@ -130,7 +130,7 @@ export const MonthlyReportView = ({
               {isSubmitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
               {editingId ? "MAJ" : "Ajouter"}
             </button>
-            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="px-4 sm:flex-none justify-center border border-line bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
+            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="px-4 sm:flex-none justify-center border border-line bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
               <FileText className="w-4 h-4" /> {showFicheDetails ? "Masquer la Fiche EAU" : "Ajouter les détails de la Fiche EAU"}
             </button>
           </div>

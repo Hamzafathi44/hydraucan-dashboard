@@ -82,7 +82,7 @@ export const DatabaseView = ({
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white"
+              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-900"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -109,7 +109,7 @@ export const DatabaseView = ({
             <button 
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white"
+              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-900"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
