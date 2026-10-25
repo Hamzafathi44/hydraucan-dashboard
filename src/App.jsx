@@ -3,7 +3,6 @@ import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { LoginForm } from './components/LoginForm';
 import { DashboardPreview } from './components/DashboardPreview';
-import { HeroGeometric } from './components/ui/shape-landing-hero';
 import { Toaster } from 'sonner';
 import { AnimatePresence } from 'motion/react';
 
@@ -103,12 +102,23 @@ function App() {
 
   if (!user) {
     return (
-      <HeroGeometric>
-        <Toaster position="top-right" richColors />
-        <div className="relative z-20 w-full flex items-center justify-center pointer-events-auto px-4 mt-8 md:mt-0">
+      <div className="min-h-screen bg-[#EEF2F7] flex flex-col">
+        <header className="bg-[#16294D] text-white">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+            <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="h-10 w-auto object-contain brightness-200" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300" /> Espace employés
+            </span>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center px-4 py-10 sm:py-14">
+          <Toaster position="top-center" richColors />
           <LoginForm />
-        </div>
-      </HeroGeometric>
+        </main>
+        <footer className="pb-6 text-center text-xs text-slate-500">
+          Usage interne uniquement · Réservé aux employés Hydraucan
+        </footer>
+      </div>
     );
   }
 
