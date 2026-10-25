@@ -121,26 +121,6 @@ export const DashboardLayout = ({ children, activeView, setActiveView }) => {
         </div>
 
         {children}
-
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-stretch justify-around gap-1 bg-white border-t border-slate-200 px-2 py-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(15,23,42,0.06)]">
-          {[
-            ['home', LayoutDashboard, 'Accueil'],
-            ['pointage', Clock, 'Pointage'],
-            ['rapport', FileText, 'Rapport'],
-            ['statistics', PieChart, 'Stats'],
-            ['fichier', Droplets, 'Eau'],
-          ].map(([view, Icon, label]) => (
-            <button
-              key={view}
-              onClick={() => go(view)}
-              className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-[10px] font-bold min-w-[56px] ${activeView === view ? 'text-[#16294D] bg-cyan-50' : 'text-slate-500'}`}
-            >
-              <Icon className="w-5 h-5" />
-              {label}
-            </button>
-          ))}
-        </nav>
-        <div className="lg:hidden h-16" aria-hidden="true" />
       </main>
     </div>
   );

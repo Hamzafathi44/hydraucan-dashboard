@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { LoginForm } from './components/LoginForm';
-import { DashboardPreview } from './components/DashboardPreview';
 import { Toaster } from 'sonner';
 import { AnimatePresence } from 'motion/react';
 
@@ -13,7 +12,6 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 // View Pages
 import { DashboardHome } from './pages/DashboardHome';
 import { MonthlyReportView } from './pages/MonthlyReportView';
-import { DatabaseView } from './pages/DatabaseView';
 import { SettingsView } from './pages/SettingsView';
 import { FichierExploitationEauView } from './pages/FichierExploitationEauView';
 import { StatisticsView } from './pages/StatisticsView';

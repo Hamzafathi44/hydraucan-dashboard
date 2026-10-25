@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 import { toast } from 'sonner';
 
@@ -8,6 +8,21 @@ export const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error('Entrez d’abord votre email / identifiant pour recevoir le lien de réinitialisation.');
+      return;
+    }
+    const finalEmail = email.includes('@') ? email : `${email}@hydraucane.com`;
+    try {
+      await sendPasswordResetEmail(auth, finalEmail);
+      toast.success('Lien de réinitialisation envoyé à votre email.');
+    } catch (error) {
+      console.error("Password Reset Error: ", error);
+      toast.error('Impossible d’envoyer le lien. Vérifiez votre email.');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,8 +76,8 @@ export const LoginForm = () => {
               placeholder="••••••••"
             />
             <div className="text-right mt-2">
-              <button type="button" className="text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors">
-                Forgot password?
+              <button type="button" onClick={handleForgotPassword} className="text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                Mot de passe oublié ?
               </button>
             </div>
           </div>
