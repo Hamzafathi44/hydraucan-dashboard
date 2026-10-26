@@ -3,7 +3,40 @@ import { useEnveloppes } from '../hooks/useEnveloppes';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, AlertTriangle, Pencil, Search } from 'lucide-react';
+
+// Proof images used to be stored as base64 inside the Firestore document.
+// Firestore documents are limited to ~1 MiB, so a report with a proof for
+// every purchase failed on save with only a generic error. Proofs are now
+// uploaded to Firebase Storage on save and only their download URLs are
+// stored in Firestore, so the document stays small no matter how many
+// proofs are attached. Old base64 proofs are kept working (PDF + display)
+// and are migrated to Storage the next time their report is saved.
+const PROOF_FIELDS = ['cimentImg', 'argileImg', 'carburantImg', 'autresImg'];
+
+const uploadProofImage = async (dataUrl, rowId, field) => {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+    return dataUrl;
+  }
+  const storage = getStorage();
+  const blob = await fetch(dataUrl).then((r) => r.blob());
+  const path = `enveloppe_preuves/${Date.now()}-${Math.random().toString(36).slice(2)}/${rowId}-${field}.jpg`;
+  const snapshot = await uploadBytes(ref(storage, path), blob);
+  return getDownloadURL(snapshot.ref);
+};
+
+const prepareRowsForSave = async (rowsToSave) => {
+  return Promise.all(
+    rowsToSave.map(async (row) => {
+      const prepared = { ...row };
+      for (const field of PROOF_FIELDS) {
+        prepared[field] = await uploadProofImage(row[field], row.id, field);
+      }
+      return prepared;
+    })
+  );
+};
 
 export const EnveloppeFinanciereView = () => {
   const { reports, loading, addReport, updateReport, deleteReport } = useEnveloppes();
@@ -48,21 +81,32 @@ export const EnveloppeFinanciereView = () => {
     if (!header.beneficiaire || !header.montantAlloue) {
       return toast.error("Veuillez remplir le bénéficiaire et le montant");
     }
-    
-    setSaving(true);
-    let result;
-    if (editingId) {
-      result = await updateReport(editingId, { header, rows });
-    } else {
-      result = await addReport({ header, rows });
-    }
-    setSaving(false);
 
-    if (result.success) {
-      toast.success(editingId ? "Rapport mis à jour !" : "Rapport sauvegardé !");
-      resetForm();
-    } else {
-      toast.error("Erreur de sauvegarde");
+    setSaving(true);
+    try {
+      // Upload any new (base64) proofs to Storage first, so Firestore only
+      // receives small download URLs. Existing Storage URLs are kept as-is.
+      const rowsToSave = await prepareRowsForSave(rows);
+      let result;
+      if (editingId) {
+        result = await updateReport(editingId, { header, rows: rowsToSave });
+      } else {
+        result = await addReport({ header, rows: rowsToSave });
+      }
+
+      if (result.success) {
+        toast.success(editingId ? "Rapport mis à jour !" : "Rapport sauvegardé !");
+        resetForm();
+      } else {
+        const reason = result.error?.message || result.error?.code || '';
+        toast.error(reason ? `Erreur de sauvegarde: ${reason}` : "Erreur de sauvegarde");
+      }
+    } catch (e) {
+      // Show the real reason (e.g. Storage not enabled / rules) instead of
+      // a generic error, so the problem can actually be fixed.
+      toast.error(`Erreur de sauvegarde: ${e?.message || e?.code || e}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -257,7 +301,7 @@ export const EnveloppeFinanciereView = () => {
       doc.text("JUSTIFICATIFS DES DÉPENSES (PREUVES)", 148, 15, { align: 'center' });
 
       let count = 0;
-      imagesToPrint.forEach((item) => {
+      for (const item of imagesToPrint) {
         if (count > 0 && count % 6 === 0) {
           doc.addPage();
           doc.setFont("helvetica", "bold");
@@ -290,7 +334,18 @@ export const EnveloppeFinanciereView = () => {
         doc.rect(x, y, boxWidth, boxHeight, 'S');
 
         try {
-          doc.addImage(item.img, 'JPEG', x + padding, y + padding, boxWidth - (padding * 2), boxHeight - (padding * 2));
+          // Storage URLs must be converted to base64 for jsPDF; old
+          // base64 proofs are used directly.
+          let imgData = item.img;
+          if (typeof imgData === 'string' && imgData.startsWith('http')) {
+            try {
+              imgData = await toBase64(imgData);
+            } catch (e) {
+              // Fall through to addImage, which is caught below.
+            }
+          }
+          const imgFormat = typeof imgData === 'string' && imgData.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+          doc.addImage(imgData, imgFormat, x + padding, y + padding, boxWidth - (padding * 2), boxHeight - (padding * 2));
         } catch (e) {
           doc.setTextColor(255, 0, 0);
           doc.setFontSize(9);
@@ -298,7 +353,7 @@ export const EnveloppeFinanciereView = () => {
         }
 
         count++;
-      });
+      }
     }
 
     doc.save(`Enveloppe_${reportHeader.beneficiaire || 'Rapport'}.pdf`);
