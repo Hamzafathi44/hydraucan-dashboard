@@ -16,6 +16,10 @@ import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, A
 const PROOF_FIELDS = ['cimentImg', 'argileImg', 'carburantImg', 'autresImg'];
 
 const uploadProofImage = async (dataUrl, rowId, field) => {
+  // Missing proof field on an old report must become null, never undefined:
+  // Firestore updateDoc() rejects explicit undefined values, which made
+  // editing old reports fail even without a new proof.
+  if (dataUrl === undefined) return null;
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
     return dataUrl;
   }
@@ -24,20 +28,40 @@ const uploadProofImage = async (dataUrl, rowId, field) => {
   const path = `enveloppe_preuves/${Date.now()}-${Math.random().toString(36).slice(2)}/${rowId}-${field}.jpg`;
   // Never hang forever on a slow / blocked upload: fail loudly after 45s
   // so the user gets a real error instead of a stuck "Sauvegarde..." button.
+  // The underlying upload error is also logged, because a timeout usually
+  // means Storage is not enabled / reachable, not just a slow network.
   const upload = (async () => {
     const snapshot = await uploadBytes(ref(storage, path), blob);
     return getDownloadURL(snapshot.ref);
   })();
+  upload.catch((err) => {
+    console.error('Storage proof upload failed:', err?.code || err?.message || err);
+  });
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error("Envoi de la preuve trop long (timeout 45s) — vérifiez la connexion et Firebase Storage")), 45000)
   );
   return Promise.race([upload, timeout]);
 };
 
+const cleanRowForSave = (row) => {
+  const cleaned = { ...row };
+  Object.keys(cleaned).forEach((k) => {
+    if (cleaned[k] === undefined) delete cleaned[k];
+  });
+  PROOF_FIELDS.forEach((field) => {
+    if (cleaned[field] === undefined) cleaned[field] = null;
+  });
+  return cleaned;
+};
+
 // Upload all remaining base64 proofs in parallel (not row by row) and
 // report progress, so a report with a proof for every purchase does not
 // sit on "Sauvegarde..." with no feedback.
-const prepareRowsForSave = async (rowsToSave, onProgress) => {
+// If Storage upload fails (timeout, not enabled, rules), fall back to
+// keeping the base64 proofs ONLY when the whole document stays under
+// ~850 KB, so a small edit still saves. Large reports still need Storage,
+// and then the real Storage error is thrown.
+const prepareRowsForSave = async (rowsToSave, headerForSave, onProgress) => {
   const jobs = [];
   rowsToSave.forEach((row, rowIndex) => {
     PROOF_FIELDS.forEach((field) => {
@@ -46,20 +70,35 @@ const prepareRowsForSave = async (rowsToSave, onProgress) => {
       }
     });
   });
-  const results = rowsToSave.map((r) => ({ ...r }));
+  const results = rowsToSave.map((r) => cleanRowForSave(r));
   let done = 0;
+  let firstError = null;
   onProgress?.(0, jobs.length);
   await Promise.all(
     jobs.map(async (job) => {
-      results[job.rowIndex][job.field] = await uploadProofImage(
-        rowsToSave[job.rowIndex][job.field],
-        rowsToSave[job.rowIndex].id,
-        job.field
-      );
+      try {
+        results[job.rowIndex][job.field] = await uploadProofImage(
+          rowsToSave[job.rowIndex][job.field],
+          rowsToSave[job.rowIndex].id,
+          job.field
+        );
+      } catch (e) {
+        if (!firstError) firstError = e;
+        // Keep the original base64 proof for a possible fallback below.
+        results[job.rowIndex][job.field] = rowsToSave[job.rowIndex][job.field];
+      }
       done += 1;
       onProgress?.(done, jobs.length);
     })
   );
+  if (firstError) {
+    const estimatedSize = JSON.stringify({ header: headerForSave, rows: results }).length;
+    if (estimatedSize < 850000) {
+      toast.error("Firebase Storage indisponible — preuve sauvegardée sans Storage (limite 1 Mo). Vérifiez Storage dans Firebase.");
+      return results;
+    }
+    throw firstError;
+  }
   return results;
 };
 
@@ -98,8 +137,19 @@ export const EnveloppeFinanciereView = () => {
   }, [editingId]);
 
   const handleEditClick = (report) => {
-    setHeader(report.header);
-    setRows(report.rows);
+    setHeader(report.header || { beneficiaire: '', montantAlloue: '' });
+    // Normalize old reports: missing proof fields become null (not
+    // undefined, which Firestore rejects), missing text fields become ''.
+    setRows(
+      (report.rows || []).map((r) => ({
+        id: r.id,
+        date: r.date || '',
+        cimentQt: r.cimentQt || '', cimentPrix: r.cimentPrix || '', cimentImg: r.cimentImg ?? null,
+        argileQt: r.argileQt || '', argilePrix: r.argilePrix || '', argileImg: r.argileImg ?? null,
+        carburant: r.carburant || '', carburantImg: r.carburantImg ?? null,
+        autres: r.autres || '', autresImg: r.autresImg ?? null
+      }))
+    );
     setEditingId(report.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -119,7 +169,7 @@ export const EnveloppeFinanciereView = () => {
       // only receives small download URLs. Existing Storage URLs are kept
       // as-is. In normal use this is now almost empty, because proofs are
       // already uploaded when they are picked (see handleImageChange).
-      const rowsToSave = await prepareRowsForSave(rows, (done, total) => {
+      const rowsToSave = await prepareRowsForSave(rows, header, (done, total) => {
         setSaveProgress(total > 0 ? `${done}/${total} preuves` : '');
       });
       let result;
@@ -166,14 +216,14 @@ export const EnveloppeFinanciereView = () => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const scale = Math.min(1, 800 / img.width);
+        const scale = Math.min(1, 700 / img.width);
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const safeBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        const safeBase64 = canvas.toDataURL('image/jpeg', 0.65);
         const { rowId, field } = activeUpload;
 
         // Show the preview immediately, then upload in the background so
@@ -195,7 +245,7 @@ export const EnveloppeFinanciereView = () => {
           .catch((err) => {
             // Keep the base64 preview: save will retry the upload and
             // show the real error there, so the proof is not lost.
-            toast.error(`Envoi de la preuve échoué: ${err?.message || err}`);
+            toast.error(`Envoi de la preuve échoué (elle sera réessayée à la sauvegarde): ${err?.message || err}`);
           })
           .finally(() => setUploadingProofs((c) => Math.max(0, c - 1)));
       };
