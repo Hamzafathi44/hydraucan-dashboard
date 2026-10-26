@@ -22,26 +22,53 @@ const uploadProofImage = async (dataUrl, rowId, field) => {
   const storage = getStorage();
   const blob = await fetch(dataUrl).then((r) => r.blob());
   const path = `enveloppe_preuves/${Date.now()}-${Math.random().toString(36).slice(2)}/${rowId}-${field}.jpg`;
-  const snapshot = await uploadBytes(ref(storage, path), blob);
-  return getDownloadURL(snapshot.ref);
+  // Never hang forever on a slow / blocked upload: fail loudly after 45s
+  // so the user gets a real error instead of a stuck "Sauvegarde..." button.
+  const upload = (async () => {
+    const snapshot = await uploadBytes(ref(storage, path), blob);
+    return getDownloadURL(snapshot.ref);
+  })();
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Envoi de la preuve trop long (timeout 45s) — vérifiez la connexion et Firebase Storage")), 45000)
+  );
+  return Promise.race([upload, timeout]);
 };
 
-const prepareRowsForSave = async (rowsToSave) => {
-  return Promise.all(
-    rowsToSave.map(async (row) => {
-      const prepared = { ...row };
-      for (const field of PROOF_FIELDS) {
-        prepared[field] = await uploadProofImage(row[field], row.id, field);
+// Upload all remaining base64 proofs in parallel (not row by row) and
+// report progress, so a report with a proof for every purchase does not
+// sit on "Sauvegarde..." with no feedback.
+const prepareRowsForSave = async (rowsToSave, onProgress) => {
+  const jobs = [];
+  rowsToSave.forEach((row, rowIndex) => {
+    PROOF_FIELDS.forEach((field) => {
+      if (typeof row[field] === 'string' && row[field].startsWith('data:')) {
+        jobs.push({ rowIndex, field });
       }
-      return prepared;
+    });
+  });
+  const results = rowsToSave.map((r) => ({ ...r }));
+  let done = 0;
+  onProgress?.(0, jobs.length);
+  await Promise.all(
+    jobs.map(async (job) => {
+      results[job.rowIndex][job.field] = await uploadProofImage(
+        rowsToSave[job.rowIndex][job.field],
+        rowsToSave[job.rowIndex].id,
+        job.field
+      );
+      done += 1;
+      onProgress?.(done, jobs.length);
     })
   );
+  return results;
 };
 
 export const EnveloppeFinanciereView = () => {
   const { reports, loading, addReport, updateReport, deleteReport } = useEnveloppes();
   
   const [saving, setSaving] = useState(false);
+  const [uploadingProofs, setUploadingProofs] = useState(0);
+  const [saveProgress, setSaveProgress] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
 
@@ -81,12 +108,20 @@ export const EnveloppeFinanciereView = () => {
     if (!header.beneficiaire || !header.montantAlloue) {
       return toast.error("Veuillez remplir le bénéficiaire et le montant");
     }
+    if (uploadingProofs > 0) {
+      return toast.error("Attendez la fin de l'envoi des preuves, puis réessayez");
+    }
 
     setSaving(true);
+    setSaveProgress('');
     try {
-      // Upload any new (base64) proofs to Storage first, so Firestore only
-      // receives small download URLs. Existing Storage URLs are kept as-is.
-      const rowsToSave = await prepareRowsForSave(rows);
+      // Upload any remaining (base64) proofs to Storage first, so Firestore
+      // only receives small download URLs. Existing Storage URLs are kept
+      // as-is. In normal use this is now almost empty, because proofs are
+      // already uploaded when they are picked (see handleImageChange).
+      const rowsToSave = await prepareRowsForSave(rows, (done, total) => {
+        setSaveProgress(total > 0 ? `${done}/${total} preuves` : '');
+      });
       let result;
       if (editingId) {
         result = await updateReport(editingId, { header, rows: rowsToSave });
@@ -107,6 +142,7 @@ export const EnveloppeFinanciereView = () => {
       toast.error(`Erreur de sauvegarde: ${e?.message || e?.code || e}`);
     } finally {
       setSaving(false);
+      setSaveProgress('');
     }
   };
 
@@ -138,9 +174,30 @@ export const EnveloppeFinanciereView = () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const safeBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        
-        setRows(rows.map(r => r.id === activeUpload.rowId ? { ...r, [activeUpload.field]: safeBase64 } : r));
+        const { rowId, field } = activeUpload;
+
+        // Show the preview immediately, then upload in the background so
+        // saving later is fast instead of uploading everything at once
+        // with no feedback. Save is blocked while an upload is in flight.
+        setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, [field]: safeBase64 } : r)));
         toast.success("Preuve ajoutée");
+        setUploadingProofs((c) => c + 1);
+        uploadProofImage(safeBase64, rowId, field)
+          .then((url) => {
+            setRows((prev) =>
+              prev.map((r) =>
+                r.id === rowId
+                  ? { ...r, [field]: r[field] === safeBase64 ? url : r[field] }
+                  : r
+              )
+            );
+          })
+          .catch((err) => {
+            // Keep the base64 preview: save will retry the upload and
+            // show the real error there, so the proof is not lost.
+            toast.error(`Envoi de la preuve échoué: ${err?.message || err}`);
+          })
+          .finally(() => setUploadingProofs((c) => Math.max(0, c - 1)));
       };
       img.src = event.target.result;
     };
@@ -399,9 +456,9 @@ export const EnveloppeFinanciereView = () => {
               Annuler
             </button>
           )}
-          <button onClick={handleSave} disabled={saving} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Sauvegarde...' : (editingId ? 'Mettre à jour' : 'Sauvegarder')}
+          <button onClick={handleSave} disabled={saving || uploadingProofs > 0} className="flex-1 md:flex-none justify-center bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 disabled:opacity-50">
+            {(saving || uploadingProofs > 0) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? `Sauvegarde... ${saveProgress}` : uploadingProofs > 0 ? `Envoi des preuves... (${uploadingProofs})` : (editingId ? 'Mettre à jour' : 'Sauvegarder')}
           </button>
         </div>
       </div>
