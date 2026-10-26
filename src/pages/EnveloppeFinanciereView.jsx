@@ -26,10 +26,12 @@ const uploadProofImage = async (dataUrl, rowId, field) => {
   const storage = getStorage();
   const blob = await fetch(dataUrl).then((r) => r.blob());
   const path = `enveloppe_preuves/${Date.now()}-${Math.random().toString(36).slice(2)}/${rowId}-${field}.jpg`;
-  // Never hang forever on a slow / blocked upload: fail loudly after 45s
+  // Never hang forever on a slow / blocked upload: fail fast after 20s
   // so the user gets a real error instead of a stuck "Sauvegarde..." button.
   // The underlying upload error is also logged, because a timeout usually
   // means Storage is not enabled / reachable, not just a slow network.
+  // This is now the ONLY Storage attempt for a proof: proofs are no longer
+  // uploaded when picked (that caused a second 45s wait before save).
   const upload = (async () => {
     const snapshot = await uploadBytes(ref(storage, path), blob);
     return getDownloadURL(snapshot.ref);
@@ -38,7 +40,7 @@ const uploadProofImage = async (dataUrl, rowId, field) => {
     console.error('Storage proof upload failed:', err?.code || err?.message || err);
   });
   const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Envoi de la preuve trop long (timeout 45s) — vérifiez la connexion et Firebase Storage")), 45000)
+    setTimeout(() => reject(new Error("Envoi de la preuve trop long (timeout 20s) — vérifiez la connexion et Firebase Storage")), 20000)
   );
   return Promise.race([upload, timeout]);
 };
@@ -165,10 +167,10 @@ export const EnveloppeFinanciereView = () => {
     setSaving(true);
     setSaveProgress('');
     try {
-      // Upload any remaining (base64) proofs to Storage first, so Firestore
-      // only receives small download URLs. Existing Storage URLs are kept
-      // as-is. In normal use this is now almost empty, because proofs are
-      // already uploaded when they are picked (see handleImageChange).
+      // Upload base64 proofs to Storage first, so Firestore only receives
+      // small download URLs. Existing Storage URLs are kept as-is.
+      // If Storage fails and the report is small, prepareRowsForSave
+      // falls back to base64 instead of failing the save.
       const rowsToSave = await prepareRowsForSave(rows, header, (done, total) => {
         setSaveProgress(total > 0 ? `${done}/${total} preuves` : '');
       });
@@ -226,28 +228,13 @@ export const EnveloppeFinanciereView = () => {
         const safeBase64 = canvas.toDataURL('image/jpeg', 0.65);
         const { rowId, field } = activeUpload;
 
-        // Show the preview immediately, then upload in the background so
-        // saving later is fast instead of uploading everything at once
-        // with no feedback. Save is blocked while an upload is in flight.
+        // Show the preview immediately and keep the proof as base64 until
+        // save. Uploading here too caused a double wait when Storage is
+        // down (45s on pick, then again on save). Save now makes the
+        // single Storage attempt, with a 20s timeout, and falls back to
+        // base64 for small reports, so picking a proof is instant.
         setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, [field]: safeBase64 } : r)));
         toast.success("Preuve ajoutée");
-        setUploadingProofs((c) => c + 1);
-        uploadProofImage(safeBase64, rowId, field)
-          .then((url) => {
-            setRows((prev) =>
-              prev.map((r) =>
-                r.id === rowId
-                  ? { ...r, [field]: r[field] === safeBase64 ? url : r[field] }
-                  : r
-              )
-            );
-          })
-          .catch((err) => {
-            // Keep the base64 preview: save will retry the upload and
-            // show the real error there, so the proof is not lost.
-            toast.error(`Envoi de la preuve échoué (elle sera réessayée à la sauvegarde): ${err?.message || err}`);
-          })
-          .finally(() => setUploadingProofs((c) => Math.max(0, c - 1)));
       };
       img.src = event.target.result;
     };
