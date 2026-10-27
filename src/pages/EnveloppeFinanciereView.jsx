@@ -9,11 +9,45 @@ import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, A
 // Proof images used to be stored as base64 inside the Firestore document.
 // Firestore documents are limited to ~1 MiB, so a report with a proof for
 // every purchase failed on save with only a generic error. Proofs are now
-// uploaded to Firebase Storage on save and only their download URLs are
-// stored in Firestore, so the document stays small no matter how many
-// proofs are attached. Old base64 proofs are kept working (PDF + display)
+// uploaded on save and only their download URLs are stored in Firestore,
+// so the document stays small no matter how many proofs are attached.
+// Dual storage: Cloudinary (free, VITE_CLOUDINARY_CLOUD_NAME /
+// VITE_CLOUDINARY_UPLOAD_PRESET) is tried first, then Firebase Storage
+// (kept for when its Blaze billing is fixed), then the base64 fallback
+// for small reports. Old base64 proofs are kept working (PDF + display)
 // and are migrated to Storage the next time their report is saved.
 const PROOF_FIELDS = ['cimentImg', 'argileImg', 'carburantImg', 'autresImg'];
+
+const uploadProofToCloudinary = async (dataUrl, rowId, field) => {
+  // Second storage (free Cloudinary), tried FIRST so proofs save now
+  // while Firebase Storage is still blocked on Blaze billing. Firebase
+  // code below is kept untouched, so it works again automatically once
+  // Blaze is fixed. Returns null when Cloudinary is not configured.
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  if (!cloudName || !preset) return null;
+  const blob = await fetch(dataUrl).then((r) => r.blob());
+  const form = new FormData();
+  form.append('file', blob, `${rowId}-${field}.jpg`);
+  form.append('upload_preset', preset);
+  form.append('folder', 'enveloppe_preuves');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    });
+    const json = await res.json();
+    if (!res.ok || !json.secure_url) {
+      throw new Error(json.error?.message || 'Cloudinary upload failed');
+    }
+    return json.secure_url;
+  } finally {
+    clearTimeout(timer);
+  }
+};
 
 const uploadProofImage = async (dataUrl, rowId, field) => {
   // Missing proof field on an old report must become null, never undefined:
@@ -22,6 +56,14 @@ const uploadProofImage = async (dataUrl, rowId, field) => {
   if (dataUrl === undefined) return null;
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
     return dataUrl;
+  }
+  // Try Cloudinary first; if it is not configured or it fails, fall
+  // through to Firebase Storage below (kept for when Blaze is fixed).
+  try {
+    const cloudinaryUrl = await uploadProofToCloudinary(dataUrl, rowId, field);
+    if (cloudinaryUrl) return cloudinaryUrl;
+  } catch (err) {
+    console.error('Cloudinary proof upload failed, trying Firebase:', err?.message || err);
   }
   const storage = getStorage();
   const blob = await fetch(dataUrl).then((r) => r.blob());
