@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion as Motion } from 'motion/react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import {
@@ -44,20 +45,25 @@ const VIEW_TITLES = {
   settings: 'Paramètres',
 };
 
+// Taste Skill v2, app sheet framed-sheet (seed 1626834225):
+// one tinted L-frame (sidebar + 48px top bar, no rule between them),
+// the work on a white sheet inset 8px from the right/bottom edges,
+// 1px edge, no shadow. Active nav is a neutral grey pill, not a
+// coloured bar. No logic changes here, only the shell.
+//
+// Batch 1 — Amicro-compatible mono sidebar (style inspiration only):
+// Amicro (amicro.dev, MIT) has no sidebar primitive and no Amicro
+// code is copied here. Its Mono style is followed locally instead:
+// lucide icons in one colour only (slate-400 inactive, navy #16294D
+// active), stroke-width 1.5, no coloured chips, no rainbow, no emoji,
+// and a subtle spring press/hover via motion/react. No entrance
+// animation is added for the whole page.
 export const DashboardLayout = ({ children, activeView, setActiveView, theme, onToggleTheme }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const go = (view) => { setActiveView(view); setIsMobileMenuOpen(false); };
 
   return (
-    <div className="dashboard-layout relative bg-[#EEF2F7] min-h-screen">
-      <button
-        onClick={() => setIsMobileMenuOpen(true)}
-        aria-label="Ouvrir le menu"
-        className="lg:hidden fixed top-4 right-4 z-30 p-3 bg-[#16294D] text-white rounded-xl shadow-lg"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
-
+    <div className="dashboard-layout relative bg-[#EDF1F5] min-h-screen">
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-slate-900/40 z-40 backdrop-blur-sm lg:hidden"
@@ -67,68 +73,88 @@ export const DashboardLayout = ({ children, activeView, setActiveView, theme, on
 
       <aside className={`sidebar ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="flex items-center justify-between">
-          <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="h-12 w-auto object-contain brightness-200" referrerPolicy="no-referrer" />
-          <button aria-label="Fermer le menu" onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2.5 text-slate-300 hover:text-white bg-white/10 rounded-lg">
-            <X className="w-5 h-5" />
+          <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="h-12 w-auto object-contain" referrerPolicy="no-referrer" />
+          <button aria-label="Fermer le menu" onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2.5 text-slate-500 hover:text-slate-900 bg-slate-200/60 rounded-lg">
+            <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
 
-        <div className="flex items-center gap-2 rounded-xl bg-white/10 border border-white/10 px-3 py-2.5">
-          <ShieldCheck className="w-5 h-5 text-cyan-300 shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg bg-white border border-line px-3 py-2.5">
+          <ShieldCheck className="w-5 h-5 text-[#16294D] shrink-0" strokeWidth={1.5} />
           <div>
-            <p className="text-xs font-bold text-white leading-tight">Espace employés</p>
-            <p className="text-[11px] text-slate-300 leading-tight">Accès réservé · Hydraucan</p>
+            <p className="text-xs font-semibold text-slate-900 leading-tight">Espace employés</p>
+            <p className="text-[11px] text-slate-500 leading-tight">Accès réservé · Hydraucan</p>
           </div>
         </div>
 
         <nav className="flex-1 space-y-6 overflow-y-auto min-h-0 pr-1">
           {MENU_GROUPS.map((group) => (
             <div key={group.label}>
-              <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
+              <p className="px-3 mb-2 text-xs font-medium text-slate-500">{group.label}</p>
               <div className="space-y-1">
                 {group.items.map(([view, Icon, label]) => (
-                  <button
+                  <Motion.button
                     key={view}
                     onClick={() => go(view)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${activeView === view ? 'bg-white text-[#16294D] shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    className={`mono-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${activeView === view ? 'bg-[#E2E6EA] text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'}`}
                   >
-                    <Icon className={`w-5 h-5 shrink-0 ${activeView === view ? 'text-cyan-600' : 'text-slate-400'}`} />
+                    <Icon className={`w-5 h-5 shrink-0 ${activeView === view ? 'text-[#16294D]' : 'text-slate-400'}`} strokeWidth={1.5} />
                     {label}
-                  </button>
+                  </Motion.button>
                 ))}
               </div>
             </div>
           ))}
         </nav>
 
-        <div className="pt-4 border-t border-white/10">
-          <button onClick={() => signOut(auth)} className="w-full flex items-center gap-3 px-3 py-2.5 text-red-300 hover:text-red-200 hover:bg-red-500/10 rounded-xl font-semibold text-sm transition-all">
-            <LogOut className="w-5 h-5" />
+        <div className="pt-4 border-t border-slate-300/60">
+          <Motion.button
+            onClick={() => signOut(auth)}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className="mono-nav-item w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-lg font-medium text-sm transition-colors"
+          >
+            <LogOut className="w-5 h-5 text-slate-400" strokeWidth={1.5} />
             Déconnexion
-          </button>
+          </Motion.button>
         </div>
       </aside>
 
-      <main className="main-content">
-        <div className="sticky top-0 z-20 -mx-4 -mt-4 px-4 sm:-mx-6 sm:-mt-6 sm:px-6 md:-mx-8 md:-mt-8 md:px-8 lg:-mx-12 lg:-mt-12 lg:px-12 py-3 mb-6 flex items-center justify-between bg-white/90 backdrop-blur-md border-b border-slate-200">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-700">Hydraucan · Interne</p>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">{VIEW_TITLES[activeView] || 'Tableau de bord'}</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {onToggleTheme && (
-              <button onClick={onToggleTheme} aria-label="Changer de thème" className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition">
-                {theme === 'dark' ? '☀️ Clair' : '🌙 Sombre'}
-              </button>
-            )}
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Employés uniquement
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-12 flex items-center justify-between px-6 shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              aria-label="Ouvrir le menu"
+              className="lg:hidden p-2 bg-white border border-line rounded-lg text-slate-700"
+            >
+              <Menu className="w-5 h-5" strokeWidth={1.5} />
+            </button>
+            <p className="text-xs font-medium text-slate-500">Hydraucan · Interne</p>
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-white border border-line px-3 py-1 text-[11px] font-medium text-slate-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#16294D]" /> Employés uniquement
             </span>
           </div>
-        </div>
+          {onToggleTheme && (
+            <button onClick={onToggleTheme} aria-label="Changer de thème" className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line px-3 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition">
+              {theme === 'dark' ? 'Clair' : 'Sombre'}
+            </button>
+          )}
+        </header>
 
-        {children}
-      </main>
+        <main className="main-content">
+          {activeView !== 'home' && (
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-slate-900 leading-tight">{VIEW_TITLES[activeView] || 'Tableau de bord'}</h2>
+            </div>
+          )}
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

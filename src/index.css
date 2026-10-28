@@ -5,11 +5,15 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-bg: #EEF2F7;
-  --color-ink: #0F172A;
-  --color-line: #E2E8F0;
-  --color-accent: #0891B2;
-  --color-sidebar: #12264E;
+  /* Taste Skill v2, app sheet: framed-sheet (seed 1626834225).
+     Frame tinted one low-chroma step from Hydraucan navy; the work
+     sits on a white sheet, 1px edge, no shadow. Colour goes on data,
+     not chrome: navy is the one data hue, cyan is retired. */
+  --color-bg: #EDF1F5;
+  --color-ink: #101828;
+  --color-line: #EDEDED;
+  --color-accent: #16294D;
+  --color-sidebar: #EDF1F5;
 }
 
 @layer base {
@@ -24,15 +28,39 @@
   }
 
   .sidebar {
-    @apply w-72 max-w-[86vw] bg-sidebar border-r border-[#0B1B3A] p-5 sm:p-6 flex flex-col gap-6 fixed lg:sticky top-0 h-[100dvh] z-50 transition-transform duration-300 ease-in-out overflow-y-auto shadow-xl;
+    @apply w-[240px] max-w-[86vw] bg-sidebar p-5 sm:p-6 flex flex-col gap-6 fixed lg:sticky top-0 h-[100dvh] z-50 transition-transform duration-300 ease-in-out overflow-y-auto;
   }
 
+  /* Batch 1 — Amicro-compatible mono sidebar/top bar (style only).
+     Every sidebar and top-bar icon keeps one thin stroke (1.5) and
+     one colour: slate-400 when inactive, Hydraucan navy #16294D
+     when active. No coloured chips, no rainbow, no emoji. The
+     motion spring itself lives on the nav buttons in
+     DashboardLayout.jsx (hover/tap only, no page entrance). */
+  .sidebar svg,
+  .dashboard-layout header svg {
+    stroke-width: 1.5;
+  }
+  .mono-nav-item svg {
+    stroke-width: 1.5;
+  }
+
+  /* White sheet: butts against the sidebar/top bar, inset 8px from
+     the right and bottom edges, 16px radius, 1px edge, no shadow. */
   .main-content {
-    @apply flex-1 p-4 sm:p-6 md:p-8 lg:p-12 max-w-[1600px] mx-auto w-full min-w-0;
+    @apply flex-1 p-6 w-full min-w-0 bg-white border border-line rounded-2xl my-0 mr-2 mb-2 mt-0 overflow-hidden;
   }
 
   .stat-card {
-    @apply bg-white p-5 sm:p-6 rounded-2xl border border-line shadow-sm flex flex-col gap-2 transition-all hover:shadow-md hover:-translate-y-0.5;
+    @apply bg-white p-5 sm:p-6 rounded-xl border border-line flex flex-col gap-2;
+  }
+
+  /* One KPI container split by 1px dividers, not four tiles. */
+  .kpi-strip {
+    @apply bg-white rounded-xl border border-line grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-line;
+  }
+  .kpi-cell {
+    @apply p-5 flex flex-col gap-1;
   }
 
   .data-grid {
@@ -44,7 +72,7 @@
   }
 
   .col-header {
-    @apply text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2;
+    @apply text-xs font-medium text-slate-500 mb-2;
   }
 
   .data-value {
@@ -56,7 +84,7 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 shadow-sm;
+    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 focus:ring-[#16294D]/20 focus:border-[#16294D];
   }
 
   select.input-field {
@@ -68,11 +96,11 @@
   }
 
   .btn-primary {
-    @apply px-6 py-3 bg-[#16294D] text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all hover:bg-[#0F1E3D] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm;
+    @apply px-6 py-3 bg-[#16294D] text-white text-sm font-semibold rounded-lg transition-all hover:bg-[#0F1E3D] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
   }
 
   .btn-accent {
-    @apply px-6 py-3 bg-cyan-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all hover:bg-cyan-700 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm;
+    @apply px-6 py-3 bg-[#16294D] text-white text-sm font-semibold rounded-lg transition-all hover:bg-[#0F1E3D] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
   }
 
   .month-pill {
@@ -84,7 +112,7 @@
   }
 
   .search-bar {
-    @apply flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl w-full max-w-md focus-within:ring-4 focus-within:ring-cyan-500/15 focus-within:border-cyan-600 transition-all shadow-sm text-slate-900;
+    @apply flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg w-full max-w-md focus-within:ring-2 focus-within:ring-[#16294D]/15 focus-within:border-[#16294D] transition-all text-slate-900;
   }
 
   .scrollbar-hide::-webkit-scrollbar {
@@ -127,10 +155,8 @@
   min-height: 0;
 }
 @media (max-width: 767px) {
-  /* Clear the fixed mobile menu button at the top-right. */
-  .main-content {
-    padding-top: 5.25rem;
-  }
+  /* Taste shell: the mobile menu button now lives in the header
+     row, not fixed at the top-right, so no extra top padding. */
   /* Data rows keep their 6-column layout and scroll sideways instead of crushing. */
   .data-row {
     min-width: 620px;
@@ -154,7 +180,10 @@
 }
 
 /* ---- Company light theme: translate old dark dashboard classes ---- */
-html:not(.theme-dark) main { background: #EEF2F7; }
+/* Taste fix: this old rule forced <main> back to slate, which wiped
+   out the white framed-sheet. The sheet itself must stay white in
+   light mode; the frame around it is the tinted #EDF1F5. */
+html:not(.theme-dark) main.main-content { background: #ffffff; }
 html:not(.theme-dark) main .bg-slate-900\/40, html:not(.theme-dark) main .bg-slate-900\/60, html:not(.theme-dark) main .bg-slate-900\/50, html:not(.theme-dark) main .bg-slate-900\/30,
 html:not(.theme-dark) main .bg-slate-900\/80, html:not(.theme-dark) main .bg-slate-800\/80, html:not(.theme-dark) main .bg-slate-800\/50, html:not(.theme-dark) main .bg-slate-800\/40 {
   background-color: #ffffff !important;
@@ -199,3 +228,9 @@ html.theme-dark main .bg-white\/90 { background-color: rgba(15, 23, 42, 0.9) !im
 html.theme-dark main .text-slate-900 { color: #F8FAFC !important; }
 html.theme-dark .recharts-cartesian-grid line { stroke: #334155 !important; }
 html.theme-dark .recharts-legend-item-text { fill: #CBD5E1 !important; color: #CBD5E1 !important; }
+
+/* Taste preview: dark mode keeps the same shell, darkened. */
+html.theme-dark .dashboard-layout { background: #0F172A; }
+html.theme-dark .sidebar { background: #0F172A; }
+html.theme-dark .kpi-strip { background: #1E293B !important; border-color: #334155 !important; }
+html.theme-dark .kpi-strip > * { border-color: #334155 !important; }

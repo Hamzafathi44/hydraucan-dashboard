@@ -1,7 +1,189 @@
+// PanelUI Web style (structure/style inspiration only — no PanelUI code
+// copied here). PanelUI (panelui.dev) is MIT-licensed. Only its Web
+// library (React + Tailwind CSS 4, Frame / Tabs presentation) is used
+// as inspiration here; the native App library is not compatible with
+// this web app and is not used. The Frame and Tabs below are built
+// locally in .jsx, in the Taste framed-sheet theme (frame #EDF1F5,
+// white sheet in light mode, navy #16294D), using only motion and
+// lucide-react, which are already in package.json.
+// Amicro Mono style (style inspiration only — no Amicro code copied here).
+// Amicro (amicro.dev) is MIT-licensed; its Mono Charts use a single hue
+// family, rounded shapes and lucide icons. These charts below are built
+// locally as pure SVG in that same mono spirit, in the Hydraucan navy
+// family, so they need no new dependency and stay compatible with the
+// Taste framed-sheet shell (white sheet, #EDF1F5 frame, navy #16294D)
+// and with the existing dark-theme CSS overrides in src/index.css.
 import { useMemo, useState } from 'react';
 import { motion as Motion } from 'motion/react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { BarChart3, PieChart as PieChartIcon, TrendingUp, Activity, AlertTriangle, Wrench, Filter } from 'lucide-react';
+
+// Single navy hue family — the only chart colours used in this file.
+const MONO = ['#16294D', '#2E4A73', '#5B7AA0', '#8AA0BC', '#C2D0E0'];
+
+// Rounded donut ring: one SVG circle per slice, drawn with stroke-dasharray.
+const MonoDonut = ({ data, title }) => {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const radius = 80;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const segments = data.map((d, i) => {
+    const fraction = total > 0 ? d.value / total : 0;
+    const length = data.length === 1 ? circumference : Math.max(0, fraction * circumference - 2);
+    const segment = { ...d, length, offset, color: MONO[i % MONO.length] };
+    offset += fraction * circumference;
+    return segment;
+  });
+  return (
+    <div>
+      <svg viewBox="0 0 200 200" className="mx-auto w-full max-w-[240px]" role="img" aria-label={title}>
+        {segments.map((s, i) => (
+          <circle
+            key={i}
+            cx="100"
+            cy="100"
+            r={radius}
+            fill="none"
+            stroke={s.color}
+            strokeWidth="26"
+            strokeDasharray={`${s.length} ${circumference - s.length}`}
+            strokeDashoffset={-s.offset}
+            transform="rotate(-90 100 100)"
+          >
+            <title>{`${s.name}: ${s.value} (${total > 0 ? ((s.value / total) * 100).toFixed(0) : 0}%)`}</title>
+          </circle>
+        ))}
+        <text x="100" y="98" textAnchor="middle" className="text-2xl font-bold fill-current text-slate-900">{total}</text>
+        <text x="100" y="118" textAnchor="middle" className="text-[11px] fill-current text-slate-500">au total</text>
+      </svg>
+      <ul className="mt-4 space-y-2">
+        {data.map((d, i) => (
+          <li key={d.name} className="flex items-center gap-2 text-sm">
+            <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: MONO[i % MONO.length] }} />
+            <span className="flex-1 text-slate-300">{d.name}</span>
+            <span className="font-bold text-white tabular-nums">{d.value}</span>
+            <span className="w-10 text-right text-slate-400 tabular-nums">
+              {total > 0 ? `${((d.value / total) * 100).toFixed(0)}%` : '0%'}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+// Rounded pill pillars: horizontal bars, darkest navy for the largest value.
+const MonoPillars = ({ data, title }) => {
+  const max = Math.max(...data.map((d) => d.value), 1);
+  return (
+    <ul className="space-y-3" role="img" aria-label={title}>
+      {data.map((d, i) => (
+        <li key={d.name} className="grid grid-cols-[minmax(0,10rem)_1fr_auto] items-center gap-3">
+          <span className="truncate text-sm text-slate-300" title={d.name}>{d.name}</span>
+          <span className="h-3.5 overflow-hidden rounded-full bg-slate-200/70">
+            <span
+              className="block h-full rounded-full"
+              style={{ width: `${(d.value / max) * 100}%`, backgroundColor: MONO[Math.min(i, MONO.length - 1)] }}
+            />
+          </span>
+          <span className="w-12 text-right text-sm font-bold text-white tabular-nums">{d.value}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+// Mono area / sparkline for the 12-month evolution, pure SVG.
+const MonoArea = ({ data, title }) => {
+  const width = 720;
+  const height = 280;
+  const padLeft = 36;
+  const padRight = 12;
+  const padTop = 16;
+  const padBottom = 28;
+  const max = Math.max(...data.map((d) => d.count), 1);
+  const x = (i) => padLeft + (data.length > 1 ? (i * (width - padLeft - padRight)) / (data.length - 1) : 0);
+  const y = (v) => padTop + (1 - v / max) * (height - padTop - padBottom);
+  const linePath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d.count)}`).join(' ');
+  const areaPath = `${linePath} L ${x(data.length - 1)} ${height - padBottom} L ${x(0)} ${height - padBottom} Z`;
+  const gridValues = [0, Math.round(max / 2), max];
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" role="img" aria-label={title}>
+      <defs>
+        <linearGradient id="monoAreaFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#5B7AA0" stopOpacity={0.3} />
+          <stop offset="95%" stopColor="#5B7AA0" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      {gridValues.map((v) => (
+        <g key={v}>
+          <line x1={padLeft} x2={width - padRight} y1={y(v)} y2={y(v)} stroke="#E2E8F0" strokeDasharray="3 3" />
+          <text x={padLeft - 6} y={y(v) + 4} textAnchor="end" fontSize="11" className="fill-current text-slate-400">{v}</text>
+        </g>
+      ))}
+      <path d={areaPath} fill="url(#monoAreaFill)" />
+      <path d={linePath} fill="none" stroke="#2E4A73" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      {data.map((d, i) => (
+        <g key={d.label}>
+          <circle cx={x(i)} cy={y(d.count)} r="4" fill="#5B7AA0" stroke="#ffffff" strokeWidth="1.5">
+            <title>{`${d.label}: ${d.count}`}</title>
+          </circle>
+          <text x={x(i)} y={y(d.count) - 10} textAnchor="middle" fontSize="11" className="fill-current text-slate-500">{d.count}</text>
+          <text x={x(i)} y={height - 8} textAnchor="middle" fontSize="11" className="fill-current text-slate-400">{d.label}</text>
+        </g>
+      ))}
+    </svg>
+  );
+};
+
+// PanelUI-Web-style Frame panel: titled header, 1px border, white
+// surface in light mode (via the existing light-theme overrides for
+// bg-slate-900/40 in src/index.css), consistent padding, mono navy icon.
+// Presentation only — it never touches the chart data it wraps.
+const PanelFrame = ({ icon: Icon, title, children }) => (
+  <section className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
+    <header className="mb-6 flex items-center gap-2">
+      <Icon className="w-5 h-5 text-[#5B7AA0]" />
+      <h2 className="text-sm font-bold uppercase tracking-widest text-white">{title}</h2>
+    </header>
+    {children}
+  </section>
+);
+
+// PanelUI-Web-style Tabs: one segmented control, not separate pills.
+// Active tab is navy with a motion animated indicator (layoutId);
+// inactive tabs are slate. Same options and same onChange behaviour
+// as the previous month pills — only the presentation changes.
+const PanelTabs = ({ options, value, onChange, label }) => (
+  <div
+    role="tablist"
+    aria-label={label}
+    className="flex gap-1 overflow-x-auto rounded-full border border-line bg-white/5 p-1 pb-1 scrollbar-hide max-w-full sm:max-w-xl"
+  >
+    {options.map((option) => {
+      const active = option === value;
+      return (
+        <button
+          key={option}
+          role="tab"
+          aria-selected={active}
+          onClick={() => onChange(option)}
+          className={`relative shrink-0 rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${
+            active ? 'text-white' : 'text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          {active && (
+            <Motion.span
+              layoutId="statistics-month-tab"
+              transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+              className="absolute inset-0 rounded-full bg-[#2E4A73] shadow-lg"
+            />
+          )}
+          <span className="relative">{option}</span>
+        </button>
+      );
+    })}
+  </div>
+);
 
 export const StatisticsView = ({ dataList }) => {
   // 1. Évolution Mensuelle (Derniers 12 mois)
@@ -17,13 +199,13 @@ export const StatisticsView = ({ dataList }) => {
         count: 0
       });
     }
-    
+
     dataList.forEach(item => {
       const d = new Date(item.date);
       const target = months.find(m => m.month === d.getMonth() && m.year === d.getFullYear());
       if (target) target.count++;
     });
-    
+
     return months;
   }, [dataList]);
 
@@ -35,7 +217,7 @@ export const StatisticsView = ({ dataList }) => {
 
   const filteredData = useMemo(() => {
     if (selectedMonth === 'Tous') return dataList;
-    return dataList.filter(item => 
+    return dataList.filter(item =>
       new Date(item.date).toLocaleString('fr-FR', { month: 'long', year: 'numeric' }) === selectedMonth
     );
   }, [dataList, selectedMonth]);
@@ -105,24 +287,6 @@ export const StatisticsView = ({ dataList }) => {
     ].filter(d => d.value > 0);
   }, [filteredData]);
 
-  const COLORS = ['#06b6d4', '#3b82f6', '#0ea5e9', '#6366f1', '#10b981', '#f59e0b'];
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#0A1020] border border-white/10 rounded-xl shadow-xl p-3">
-          <p className="text-white font-medium text-sm mb-1">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-xs font-bold" style={{ color: entry.color || entry.fill }}>
-              {entry.name}: {entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <Motion.div
       key="statistics"
@@ -135,180 +299,72 @@ export const StatisticsView = ({ dataList }) => {
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">Toutes les Statistiques</h1>
         <p className="text-slate-400 text-sm font-medium">Analyse approfondie et historique global des interventions.</p>
       </header>
-      
+
       {/* Filters */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-slate-400" />
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Filtrer par Mois</h2>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-full sm:max-w-xl">
-          {months.map(m => (
-            <button 
-              key={m} 
-              onClick={() => setSelectedMonth(m)} 
-              className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                selectedMonth === m 
-                ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' 
-                : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-900 border border-line'
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
+        <PanelTabs options={months} value={selectedMonth} onChange={setSelectedMonth} label="Filtrer par Mois" />
       </div>
 
       {/* Row 1: Area Chart (Full Width) */}
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
-        <div className="flex items-center gap-2 mb-6">
-          <TrendingUp className="w-5 h-5 text-cyan-500" />
-          <h2 className="text-sm font-bold uppercase tracking-widest text-white">Évolution des interventions (12 Mois)</h2>
-        </div>
+      <PanelFrame icon={TrendingUp} title="Évolution des interventions (12 Mois)">
         <div className="h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={monthlyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="label" fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" />
-              <YAxis fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" />
-              <RechartsTooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="count" name="Interventions" stroke="#06b6d4" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <MonoArea data={monthlyData} title="Évolution des interventions (12 Mois)" />
         </div>
-      </div>
+      </PanelFrame>
 
       {/* Row 2: Type Pie Chart & Pipe Materials Bar Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Type Distribution */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <PieChartIcon className="w-5 h-5 text-cyan-500" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white">Répartition par Type</h2>
-          </div>
-          <div className="h-[300px]">
+        <PanelFrame icon={PieChartIcon} title="Répartition par Type">
+          <div>
             {typeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={typeData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={90}
-                    paddingAngle={5}
-                    dataKey="value"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {typeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(255,255,255,0.05)" />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                </PieChart>
-              </ResponsiveContainer>
+              <MonoDonut data={typeData} title="Répartition par Type" />
             ) : (
               <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
             )}
           </div>
-        </div>
+        </PanelFrame>
 
         {/* Pipe Materials */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <BarChart3 className="w-5 h-5 text-cyan-500" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white">Matériaux des Conduites (Fuites)</h2>
-          </div>
-          <div className="h-[300px]">
+        <PanelFrame icon={BarChart3} title="Matériaux des Conduites (Fuites)">
+          <div>
              {pipeMaterials.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={pipeMaterials} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
-                    <XAxis type="number" fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" />
-                    <YAxis type="category" dataKey="name" fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" width={100} />
-                    <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                    <Bar dataKey="value" name="Occurrences" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <MonoPillars data={pipeMaterials} title="Matériaux des Conduites (Fuites)" />
              ) : (
                 <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
              )}
           </div>
-        </div>
+        </PanelFrame>
       </div>
 
       {/* Row 3: Origins & Flow Rates */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
+
         {/* Consumed Materials */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <Wrench className="w-5 h-5 text-cyan-500" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white">Matériels Consommés</h2>
-          </div>
-          <div className="h-[300px]">
+        <PanelFrame icon={Wrench} title="Matériels Consommés">
+          <div>
              {consumedMaterials.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={consumedMaterials} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="name" fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" />
-                    <YAxis fontSize={11} axisLine={false} tickLine={false} stroke="#94a3b8" />
-                    <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                    <Bar dataKey="value" name="Quantité" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40}>
-                      {consumedMaterials.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <MonoPillars data={consumedMaterials} title="Matériels Consommés" />
              ) : (
                 <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
              )}
           </div>
-        </div>
+        </PanelFrame>
 
         {/* Flow Rates (Débit) */}
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-line p-4 sm:p-6 lg:p-8 shadow-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <Activity className="w-5 h-5 text-cyan-500" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white">Répartition par Débit</h2>
-          </div>
-          <div className="h-[300px]">
+        <PanelFrame icon={Activity} title="Répartition par Débit">
+          <div>
              {debitData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={debitData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={0}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      dataKey="value"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {debitData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#38bdf8', '#2563eb', '#1e3a8a'][index % 3]} stroke="rgba(255,255,255,0.05)" />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                  </PieChart>
-                </ResponsiveContainer>
+                <MonoDonut data={debitData} title="Répartition par Débit" />
              ) : (
                 <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
              )}
           </div>
-        </div>
+        </PanelFrame>
       </div>
     </Motion.div>
   );

@@ -59,7 +59,7 @@ const AuthenticatedApp = ({ user, activeView, setActiveView, theme, onToggleThem
           </div>
         )}
 
-        {/* ✅ CORRECTED PLACEMENT: The Enveloppe block goes here, outside the srm-excel block */}
+        {/* Enveloppe block: outside the srm-excel block */}
         {activeView === 'enveloppe' && (
           <EnveloppeFinanciereView />
         )}
@@ -116,7 +116,7 @@ function App() {
             <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="h-10 w-auto object-contain brightness-200" />
             <div className="flex items-center gap-3">
               <button onClick={toggleTheme} aria-label="Changer de thème" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-bold hover:bg-white/20 transition">
-                {theme === 'dark' ? '☀️ Clair' : '🌙 Sombre'}
+                {theme === 'dark' ? 'Clair' : 'Sombre'}
               </button>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-300" /> Espace employés
