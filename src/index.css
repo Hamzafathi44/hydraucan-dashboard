@@ -16,6 +16,30 @@
   --color-sidebar: #EDF1F5;
 }
 
+/* Theme-change batch (copy only): accent picker.
+   data-accent on <html> retints the shell and every accent utility
+   (bg-accent / text-accent / border-accent), because Tailwind v4
+   utilities read these CSS variables at runtime. Navy stays default. */
+html[data-accent="teal"] {
+  --color-accent: #0F766E;
+  --color-bg: #E7F2EF;
+  --color-sidebar: #E7F2EF;
+}
+html[data-accent="gold"] {
+  --color-accent: #B45309;
+  --color-bg: #F5EDDC;
+  --color-sidebar: #F5EDDC;
+}
+html[data-accent="green"] {
+  --color-accent: #15803D;
+  --color-bg: #E8F3E8;
+  --color-sidebar: #E8F3E8;
+}
+html.theme-dark[data-accent="teal"] { --color-accent: #2DD4BF; }
+html.theme-dark[data-accent="gold"] { --color-accent: #FBBF24; }
+html.theme-dark[data-accent="green"] { --color-accent: #4ADE80; }
+html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
+
 @layer base {
   body {
     @apply bg-bg text-ink font-sans antialiased;
@@ -49,7 +73,21 @@
      the right and bottom edges, 16px radius, 1px edge, no shadow. */
   .main-content {
     @apply flex-1 p-6 w-full min-w-0 bg-white border border-line rounded-2xl my-0 mr-2 mb-2 mt-0 overflow-hidden;
+    border-width: 2px;
+    border-color: #D4DAE1;
+    box-shadow: 0 2px 12px rgba(22, 41, 77, 0.06);
   }
+  main h1, main h2 { font-weight: 800; }
+  /* Theme exemption (copy only): Réfection and Enveloppe keep the
+     pre-theme-change sheet — 1px border, no shadow, normal headings.
+     Light/navy are already forced for these views in App.jsx, so
+     only the bolder theme-change rules need undoing here. */
+  main.theme-exempt.main-content {
+    border-width: 1px;
+    border-color: #EDEDED;
+    box-shadow: none;
+  }
+  main.theme-exempt h1, main.theme-exempt h2 { font-weight: 600; }
 
   .stat-card {
     @apply bg-white p-5 sm:p-6 rounded-xl border border-line flex flex-col gap-2;
@@ -214,10 +252,10 @@ html:not(.theme-dark) main .recharts-legend-item-text { fill: #475569 !important
 html:not(.theme-dark) main .recharts-tooltip-wrapper { filter: drop-shadow(0 8px 16px rgba(15,23,42,0.12)); }
 
 /* ---- Dark mode (theme-dark): restore original dark look ---- */
-html.theme-dark body { background: #0F172A; color: #E2E8F0; }
-html.theme-dark main { background: #0F172A; }
+html.theme-dark body { background: #0B1220; color: #F1F5F9; }
+html.theme-dark main { background: #0B1220; }
 html.theme-dark .main-content { background: transparent; }
-html.theme-dark .stat-card { background: #1E293B !important; border-color: #334155 !important; color: #E2E8F0; }
+html.theme-dark .stat-card { background: #1E293B !important; border-color: #475569 !important; color: #F1F5F9; }
 html.theme-dark .data-value { color: #E2E8F0; }
 html.theme-dark .col-header { color: #94A3B8; }
 html.theme-dark .input-field { background: #1E293B !important; border-color: #334155 !important; color: #F8FAFC !important; }
@@ -230,7 +268,7 @@ html.theme-dark .recharts-cartesian-grid line { stroke: #334155 !important; }
 html.theme-dark .recharts-legend-item-text { fill: #CBD5E1 !important; color: #CBD5E1 !important; }
 
 /* Taste preview: dark mode keeps the same shell, darkened. */
-html.theme-dark .dashboard-layout { background: #0F172A; }
-html.theme-dark .sidebar { background: #0F172A; }
+html.theme-dark .dashboard-layout { background: #0B1220; }
+html.theme-dark .sidebar { background: #0B1220; }
 html.theme-dark .kpi-strip { background: #1E293B !important; border-color: #334155 !important; }
 html.theme-dark .kpi-strip > * { border-color: #334155 !important; }

@@ -15,13 +15,14 @@
 // and with the existing dark-theme CSS overrides in src/index.css.
 import { useMemo, useState } from 'react';
 import { motion as Motion } from 'motion/react';
+import { getChartPalette } from '../lib/accent';
 import { BarChart3, PieChart as PieChartIcon, TrendingUp, Activity, AlertTriangle, Wrench, Filter } from 'lucide-react';
 
-// Single navy hue family — the only chart colours used in this file.
-const MONO = ['#16294D', '#2E4A73', '#5B7AA0', '#8AA0BC', '#C2D0E0'];
+// Chart palette follows the chosen theme accent (and light/dark mode).
 
 // Rounded donut ring: one SVG circle per slice, drawn with stroke-dasharray.
-const MonoDonut = ({ data, title }) => {
+const MonoDonut = ({ data, title, palette = ['#16294D', '#2E4A73', '#5B7AA0', '#8AA0BC', '#C2D0E0'] }) => {
+  const MONO = palette;
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
@@ -72,7 +73,8 @@ const MonoDonut = ({ data, title }) => {
 };
 
 // Rounded pill pillars: horizontal bars, darkest navy for the largest value.
-const MonoPillars = ({ data, title }) => {
+const MonoPillars = ({ data, title, palette = ['#16294D', '#2E4A73', '#5B7AA0', '#8AA0BC', '#C2D0E0'] }) => {
+  const MONO = palette;
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <ul className="space-y-3" role="img" aria-label={title}>
@@ -93,7 +95,7 @@ const MonoPillars = ({ data, title }) => {
 };
 
 // Mono area / sparkline for the 12-month evolution, pure SVG.
-const MonoArea = ({ data, title }) => {
+const MonoArea = ({ data, title, palette = ['#16294D', '#2E4A73', '#5B7AA0', '#8AA0BC', '#C2D0E0'] }) => {
   const width = 720;
   const height = 280;
   const padLeft = 36;
@@ -110,8 +112,8 @@ const MonoArea = ({ data, title }) => {
     <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full" role="img" aria-label={title}>
       <defs>
         <linearGradient id="monoAreaFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#5B7AA0" stopOpacity={0.3} />
-          <stop offset="95%" stopColor="#5B7AA0" stopOpacity={0} />
+          <stop offset="5%" stopColor={palette[2]} stopOpacity={0.3} />
+          <stop offset="95%" stopColor={palette[2]} stopOpacity={0} />
         </linearGradient>
       </defs>
       {gridValues.map((v) => (
@@ -121,10 +123,10 @@ const MonoArea = ({ data, title }) => {
         </g>
       ))}
       <path d={areaPath} fill="url(#monoAreaFill)" />
-      <path d={linePath} fill="none" stroke="#2E4A73" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={linePath} fill="none" stroke={palette[1]} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       {data.map((d, i) => (
         <g key={d.label}>
-          <circle cx={x(i)} cy={y(d.count)} r="4" fill="#5B7AA0" stroke="#ffffff" strokeWidth="1.5">
+          <circle cx={x(i)} cy={y(d.count)} r="4" fill={palette[2]} stroke="#ffffff" strokeWidth="1.5">
             <title>{`${d.label}: ${d.count}`}</title>
           </circle>
           <text x={x(i)} y={y(d.count) - 10} textAnchor="middle" fontSize="11" className="fill-current text-slate-500">{d.count}</text>
@@ -185,7 +187,8 @@ const PanelTabs = ({ options, value, onChange, label }) => (
   </div>
 );
 
-export const StatisticsView = ({ dataList }) => {
+export const StatisticsView = ({ dataList, theme = 'light', accent = 'navy' }) => {
+  const MONO = getChartPalette(accent, theme);
   // 1. Évolution Mensuelle (Derniers 12 mois)
   const monthlyData = useMemo(() => {
     const months = [];
@@ -312,7 +315,7 @@ export const StatisticsView = ({ dataList }) => {
       {/* Row 1: Area Chart (Full Width) */}
       <PanelFrame icon={TrendingUp} title="Évolution des interventions (12 Mois)">
         <div className="h-[350px]">
-          <MonoArea data={monthlyData} title="Évolution des interventions (12 Mois)" />
+          <MonoArea data={monthlyData} palette={MONO} title="Évolution des interventions (12 Mois)" />
         </div>
       </PanelFrame>
 
@@ -322,7 +325,7 @@ export const StatisticsView = ({ dataList }) => {
         <PanelFrame icon={PieChartIcon} title="Répartition par Type">
           <div>
             {typeData.length > 0 ? (
-              <MonoDonut data={typeData} title="Répartition par Type" />
+              <MonoDonut data={typeData} palette={MONO} title="Répartition par Type" />
             ) : (
               <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
             )}
@@ -333,7 +336,7 @@ export const StatisticsView = ({ dataList }) => {
         <PanelFrame icon={BarChart3} title="Matériaux des Conduites (Fuites)">
           <div>
              {pipeMaterials.length > 0 ? (
-                <MonoPillars data={pipeMaterials} title="Matériaux des Conduites (Fuites)" />
+                <MonoPillars data={pipeMaterials} palette={MONO} title="Matériaux des Conduites (Fuites)" />
              ) : (
                 <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
              )}
@@ -348,7 +351,7 @@ export const StatisticsView = ({ dataList }) => {
         <PanelFrame icon={Wrench} title="Matériels Consommés">
           <div>
              {consumedMaterials.length > 0 ? (
-                <MonoPillars data={consumedMaterials} title="Matériels Consommés" />
+                <MonoPillars data={consumedMaterials} palette={MONO} title="Matériels Consommés" />
              ) : (
                 <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
              )}
@@ -359,7 +362,7 @@ export const StatisticsView = ({ dataList }) => {
         <PanelFrame icon={Activity} title="Répartition par Débit">
           <div>
              {debitData.length > 0 ? (
-                <MonoDonut data={debitData} title="Répartition par Débit" />
+                <MonoDonut data={debitData} palette={MONO} title="Répartition par Débit" />
              ) : (
                 <div className="flex items-center justify-center h-full text-slate-500 text-sm">Aucune donnée disponible</div>
              )}

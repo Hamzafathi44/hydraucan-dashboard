@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Calendar as CalendarIcon, PieChart as PieChartIcon, Activity, BarChart3, FileText, TrendingUp, Clock } from 'lucide-react';
 import { motion as Motion, animate } from 'motion/react';
+import { getChartPalette, getAccent } from '../lib/accent';
 
 // Taste Skill v2, app sheet framed-sheet: the dashboard is an app
 // screen, not a landing page. KPIs are type in one container split
@@ -25,7 +26,8 @@ import { motion as Motion, animate } from 'motion/react';
 // verbatim copy of PanelUI code, written in .jsx with only
 // dependencies already in package.json (motion, lucide-react).
 // No new KPI, trend, or previous-month figure is introduced here.
-const NAVY_SHADES = ['#16294D', '#2E4A73', '#5B7AA0', '#8AA0BC', '#C2D0E0'];
+// Chart palette follows the chosen theme accent (and light/dark mode),
+// via src/lib/accent.js — navy stays the default.
 
 // Fallback icons, matching exactly the icons useDashboardData
 // already attaches to each stat (FileText / TrendingUp / Clock).
@@ -55,7 +57,8 @@ const RollingNumber = ({ value }) => {
   return <span>{display}</span>;
 };
 
-export const DashboardHome = ({ stats, dataList, chartData }) => {
+export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', accent = 'navy' }) => {
+  const NAVY_SHADES = getChartPalette(accent, theme);
   // Work-per-day computation, copied exactly from the previous
   // Recharts version: one entry per day of the current month,
   // counted from dataList items dated in the current month.
@@ -127,7 +130,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
           return (
             <div key={stat.label} className="bg-white rounded-xl border border-line p-5">
               <div className="flex items-center gap-2">
-                {Icon ? <Icon className="w-4 h-4 text-[#16294D]" /> : null}
+                {Icon ? <Icon className="w-4 h-4 text-accent" /> : null}
                 <span className="text-sm text-slate-500">{stat.label}</span>
               </div>
               <span className={`mt-2 block font-semibold text-slate-900 tabular-nums ${isNumeric ? 'text-3xl' : 'text-2xl'}`}>
@@ -149,7 +152,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
         {/* Work Schedule Chart: Mono Pill Pillars (Amicro Mono style) */}
         <div className="bg-white rounded-xl border border-line p-6">
           <div className="flex items-center gap-2 mb-6">
-            <CalendarIcon className="w-4 h-4 text-[#16294D]" />
+            <CalendarIcon className="w-4 h-4 text-accent" />
             <h2 className="text-sm font-semibold text-slate-900">Calendrier de travail (mois en cours)</h2>
           </div>
           <div className="h-[300px]">
@@ -200,7 +203,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
                     >
                       <title>{`Jour ${entry.day} : ${entry.count} travaux`}</title>
                     </Motion.path>
-                    <text x={x + pillarWidth / 2} y={y - 6} fontSize={11} fontWeight={600} fill="#16294D" textAnchor="middle" style={{ fontVariantNumeric: 'tabular-nums' }}>{entry.count}</text>
+                    <text x={x + pillarWidth / 2} y={y - 6} fontSize={11} fontWeight={600} fill={getAccent(accent).light} textAnchor="middle" style={{ fontVariantNumeric: 'tabular-nums' }}>{entry.count}</text>
                     <text x={gutter + i * slot + slot / 2} y={baselineY + 18} fontSize={11} fill="#64748b" textAnchor="middle" style={{ fontVariantNumeric: 'tabular-nums' }}>{entry.day}</text>
                   </g>
                 );
@@ -212,7 +215,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
         {/* Nature Distribution Chart: Mono Rounded Donut Ring, one navy hue family, not rainbow */}
         <div className="bg-white rounded-xl border border-line p-6">
           <div className="flex items-center gap-2 mb-6">
-            <PieChartIcon className="w-4 h-4 text-[#16294D]" />
+            <PieChartIcon className="w-4 h-4 text-accent" />
             <h2 className="text-sm font-semibold text-slate-900">Répartition par nature</h2>
           </div>
           <div className="h-[300px]">
@@ -251,7 +254,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
                       ))}
                     </g>
                   </Motion.g>
-                  <text x={100} y={98} fontSize={26} fontWeight={600} fill="#16294D" textAnchor="middle" style={{ fontVariantNumeric: 'tabular-nums' }}>{donutTotal}</text>
+                  <text x={100} y={98} fontSize={26} fontWeight={600} fill={getAccent(accent).light} textAnchor="middle" style={{ fontVariantNumeric: 'tabular-nums' }}>{donutTotal}</text>
                   <text x={100} y={118} fontSize={11} fill="#64748b" textAnchor="middle">travaux</text>
                 </svg>
                 <ul className="mt-2 space-y-1.5 overflow-y-auto">
@@ -276,7 +279,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
         {/* Material Consumption */}
         <div className="lg:col-span-1 bg-white rounded-xl border border-line p-6">
           <div className="flex items-center gap-2 mb-6">
-            <Activity className="w-4 h-4 text-[#16294D]" />
+            <Activity className="w-4 h-4 text-accent" />
             <h2 className="text-sm font-semibold text-slate-900">Consommation de matériel</h2>
           </div>
           <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
@@ -314,7 +317,7 @@ export const DashboardHome = ({ stats, dataList, chartData }) => {
         {/* Nature Summary Table */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-line p-6">
           <div className="flex items-center gap-2 mb-6">
-            <BarChart3 className="w-4 h-4 text-[#16294D]" />
+            <BarChart3 className="w-4 h-4 text-accent" />
             <h2 className="text-sm font-semibold text-slate-900">Résumé des travaux par nature</h2>
           </div>
           <div className="overflow-x-auto">
