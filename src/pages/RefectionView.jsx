@@ -11,8 +11,8 @@ const NATURES = [
   'argile', 'Béton', 'Pavé', 'Goudron', 'Faience', 'Revsol'
 ];
 
-export const RefectionView = () => {
-  const { refections, loading, addRefection, updateRefection, deleteRefection } = useRefections();
+export const RefectionView = ({ user }) => {
+  const { refections, loading, addRefection, updateRefection, deleteRefection } = useRefections(user);
 
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -132,7 +132,10 @@ export const RefectionView = () => {
 
   const handleSingleDownload = (entry) => {
     const month = entry.date ? entry.date.slice(0, 7) : 'Tous';
-    generateReportPDF([entry], month);
+    // Distinct title + filename for one entry, instead of the monthly
+    // title that made the single download indistinguishable from the
+    // whole-month PDF.
+    generateReportPDF([entry], month, `Réfection - ${entry.reference || 'sans référence'} - ${entry.date || ''}`);
   };
 
   const handleGeneratePDF = () => {
@@ -498,10 +501,11 @@ export const RefectionView = () => {
                             <td rowSpan={totalRows} className="text-center py-2 px-2 align-top">
                               <button
                                 onClick={() => handleSingleDownload(r)}
-                                className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg p-1.5 transition"
-                                title="Download this entry as PDF"
+                                className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg p-1.5 transition flex items-center gap-1 mx-auto font-bold"
+                                title="Télécharger cette entrée seule en PDF"
                               >
                                 <FileDown className="w-3.5 h-3.5" />
+                                <span className="text-[11px]">PDF</span>
                               </button>
                             </td>
                             <td rowSpan={totalRows} className="text-center py-2 px-2 align-top">

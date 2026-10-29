@@ -89,7 +89,7 @@ const buildBody = (entries) => {
   return { body, merges };
 };
 
-export const generateReportPDF = async (filteredList, selectedMonth) => {
+export const generateReportPDF = async (filteredList, selectedMonth, customTitle) => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const loadingToast = toast.loading("Génération du PDF...");
 
@@ -100,7 +100,11 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     console.warn("Logo non trouvé");
   }
 
-  const title = selectedMonth === 'Tous' ? "Rapport Mensuel - Global" : `Rapport Mensuel - ${selectedMonth}`;
+  // Single-entry download (copy, 2026-10-29): previously a single entry was
+  // exported with the same "Rapport Mensuel - YYYY-MM" title and filename
+  // as the whole month's PDF, so it looked like there was no single option
+  // at all. A custom title now makes the single PDF visibly its own document.
+  const title = customTitle || (selectedMonth === 'Tous' ? "Rapport Mensuel - Global" : `Rapport Mensuel - ${selectedMonth}`);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -158,7 +162,8 @@ export const generateReportPDF = async (filteredList, selectedMonth) => {
     }
   });
 
-  doc.save(`${title}.pdf`);
+  const safeFilename = title.replace(/[\\/:*?"<>|]/g, '').trim() || 'rapport';
+  doc.save(`${safeFilename}.pdf`);
   toast.dismiss(loadingToast);
   toast.success("PDF exporté avec succès");
 };
