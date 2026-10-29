@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // Security fix (copy, 2026-10-28): Enveloppe reports are per-user, like
@@ -7,10 +7,10 @@ import { db } from '../firebase';
 // owner filter and wrote no userId, so any signed-in employee could read,
 // edit and delete every other employee's financial reports and proof URLs.
 // Now only the current user's reports are read, and new reports are stamped
-// with their userId. Consequence: reports written before this fix carry no
-// userId and no longer appear in the list until they are assigned to an
-// owner (e.g. a one-time assignment in the Firebase console) — they are
-// not deleted.
+// with their userId. Legacy exception (2026-10-29, on Michael's decision):
+// reports written before this fix carry no userId and are shown to every
+// signed-in employee, as before; only reports WITH a userId are restricted
+// to their owner. They were never deleted.
 export const useEnveloppes = (user) => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,11 +21,13 @@ export const useEnveloppes = (user) => {
       setLoading(false);
       return;
     }
-    // Sorted client-side on purpose: where(userId) + orderBy(createdAt)
-    // would need a new Firestore composite index before the view works.
-    const q = query(collection(db, 'enveloppe_reports'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    // Sorted client-side on purpose: orderBy(createdAt) would need a new
+    // Firestore composite index before the view works. No server-side
+    // userId filter: legacy reports without a userId must also load, so
+    // the owner check happens here (ownerless = visible to everyone).
+    const unsubscribe = onSnapshot(collection(db, 'enveloppe_reports'), (snapshot) => {
       const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .filter((r) => !r.userId || r.userId === user.uid)
         .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       setReports(list);
       setLoading(false);

@@ -23,36 +23,46 @@ service cloud.firestore {
     function isOwner() {
       return request.auth != null && resource.data.userId == request.auth.uid;
     }
+    // Legacy exception (2026-10-29, on Michael's decision): documents
+    // written before userId stamping carry no userId and stay shared —
+    // any signed-in employee may read, update and delete them, as
+    // before. Only documents WITH a userId are restricted to their owner.
+    function isLegacy() {
+      return request.auth != null && !('userId' in resource.data);
+    }
+    function isOwnerOrLegacy() {
+      return isOwner() || isLegacy();
+    }
     function creatingAsSelf() {
       return request.auth != null && request.resource.data.userId == request.auth.uid;
     }
 
-    // Work Reports: owner only
+    // Work Reports: owner only, except ownerless legacy documents (shared)
     match /workReports/{reportId} {
-      allow read, update, delete: if isOwner();
+      allow read, update, delete: if isOwnerOrLegacy();
       allow create: if creatingAsSelf();
     }
 
-    // Workers and Pointage: owner only (queries already filter by userId)
+    // Workers and Pointage: owner only, except ownerless legacy documents
     match /workers/{workerId} {
-      allow read, update, delete: if isOwner();
+      allow read, update, delete: if isOwnerOrLegacy();
       allow create: if creatingAsSelf();
     }
     match /pointages/{pointageId} {
-      allow read, update, delete: if isOwner();
+      allow read, update, delete: if isOwnerOrLegacy();
       allow create: if creatingAsSelf();
     }
 
-    // Réfection: owner only (fixed 2026-10-28; was previously unfiltered)
+    // Réfection: owner only, except ownerless legacy entries (shared)
     match /refections/{refectionId} {
-      allow read, update, delete: if isOwner();
+      allow read, update, delete: if isOwnerOrLegacy();
       allow create: if creatingAsSelf();
     }
 
-    // Enveloppe financière: owner only (fixed 2026-10-28; was previously
-    // unfiltered and written with no userId at all)
+    // Enveloppe financière: owner only, except ownerless legacy reports
+    // (shared)
     match /enveloppe_reports/{reportId} {
-      allow read, update, delete: if isOwner();
+      allow read, update, delete: if isOwnerOrLegacy();
       allow create: if creatingAsSelf();
     }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import { 
-  collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, getDoc, where, updateDoc 
+  collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, getDoc, updateDoc
 } from "firebase/firestore";
 import { toast } from 'sonner';
 import { FileText, TrendingUp, Clock } from 'lucide-react';
@@ -113,16 +113,15 @@ export const useDashboardData = (user) => {
   useEffect(() => {
     if (!user) return;
     
-    // MULTI-TENANT QUERY: Only fetch documents where userId == current user
-    const q = query(
-      collection(db, "workReports"), 
-      where("userId", "==", user.uid)
-      // Note: If you add orderBy("date", "desc") here, Firestore will require a composite index.
-      // To avoid forcing the user to build an index, we fetch and sort in JavaScript for now.
-    );
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      let reports = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    // MULTI-TENANT QUERY: documents WITH a userId are restricted to their
+    // owner; legacy documents without a userId are shown to every
+    // signed-in employee (2026-10-29, on Michael's decision). No
+    // server-side userId filter, so legacy documents load too.
+    // Note: If you add orderBy("date", "desc") here, Firestore will require a composite index.
+    // To avoid forcing the user to build an index, we fetch and sort in JavaScript for now.
+    const unsubscribe = onSnapshot(collection(db, "workReports"), (snapshot) => {
+      let reports = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))
+        .filter((d) => !d.userId || d.userId === user.uid);
       // Client-side sort to avoid composite index requirements
       reports.sort((a, b) => new Date(b.date) - new Date(a.date));
       setDataList(reports);

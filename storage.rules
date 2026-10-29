@@ -7,14 +7,23 @@ rules_version = '2';
 //
 // IMPORTANT: this file is NOT deployed by Vercel. Paste it into Firebase
 // Console > Storage > Rules and publish it there for it to take effect.
-// Proofs uploaded before this fix live in the flat shared folder and are
-// not covered by the per-user rule below — move or re-upload them, or add
-// an explicit legacy rule, if they still need to be readable.
+// Proofs uploaded before this fix live in the flat shared folder; since
+// 2026-10-29 they are covered by the explicit legacy read rule below, so
+// they stay readable by any signed-in employee.
 
 service firebase.storage {
   match /b/{bucket}/o {
     match /enveloppe_preuves/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    // Legacy proofs (2026-10-29): uploads before per-user paths live in
+    // the flat folder enveloppe_preuves/<timestamp-random>/<file> — two
+    // segments, so they do not match the per-user rule above. Like the
+    // legacy entries they belong to, they stay readable by any signed-in
+    // employee; writes to the flat folder stay denied (new uploads go
+    // to per-user folders).
+    match /enveloppe_preuves/{folder}/{file} {
+      allow read: if request.auth != null;
     }
   }
 }

@@ -6,9 +6,7 @@ import {
   deleteDoc,
   updateDoc,
   doc,
-  serverTimestamp,
-  query,
-  where
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -17,9 +15,10 @@ import { db } from '../firebase';
 // filter and wrote no userId, so any signed-in employee could read, edit
 // and delete every other employee's entries. Now only the current user's
 // entries are read, and new entries are stamped with their userId.
-// Consequence: entries written before this fix carry no userId and no
-// longer appear in the list until they are assigned to an owner (e.g. a
-// one-time assignment in the Firebase console) — they are not deleted.
+// Legacy exception (2026-10-29, on Michael's decision): entries written
+// before this fix carry no userId and are shown to every signed-in
+// employee, as before; only entries WITH a userId are restricted to their
+// owner. They were never deleted.
 export const useRefections = (user) => {
   const [refections, setRefections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,16 +29,19 @@ export const useRefections = (user) => {
       setLoading(false);
       return;
     }
-    // Sorted client-side on purpose: where(userId) + orderBy(date) would
-    // need a new Firestore composite index before the view works at all.
-    const q = query(collection(db, 'refections'), where('userId', '==', user.uid));
+    // Sorted client-side on purpose: orderBy(date) would need a new
+    // Firestore composite index before the view works at all. No
+    // server-side userId filter: legacy entries without a userId must
+    // also load, so the owner check happens here (ownerless = visible
+    // to everyone).
     const unsubscribe = onSnapshot(
-      q,
+      collection(db, 'refections'),
       (snapshot) => {
         const list = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data()
-        })).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        })).filter((r) => !r.userId || r.userId === user.uid)
+          .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
         setRefections(list);
         setLoading(false);
       },

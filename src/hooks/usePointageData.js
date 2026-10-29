@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { 
-  collection, addDoc, onSnapshot, query, where, updateDoc, doc, deleteDoc, writeBatch
+import {
+  collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, writeBatch
 } from "firebase/firestore";
 import { toast } from 'sonner';
 
@@ -14,9 +14,12 @@ export const usePointageData = (user) => {
   // 1. Fetch Workers
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, "workers"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const w = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    // Legacy exception (2026-10-29): workers without a userId are shown
+    // to every signed-in employee; only workers WITH a userId are
+    // restricted to their owner.
+    const unsubscribe = onSnapshot(collection(db, "workers"), (snapshot) => {
+      const w = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))
+        .filter((d) => !d.userId || d.userId === user.uid);
       setWorkers(w.sort((a, b) => a.name.localeCompare(b.name)));
     });
     return () => unsubscribe();
@@ -25,9 +28,10 @@ export const usePointageData = (user) => {
   // 2. Fetch Pointages
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, "pointages"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      let records = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    // Same legacy exception as workers above.
+    const unsubscribe = onSnapshot(collection(db, "pointages"), (snapshot) => {
+      let records = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))
+        .filter((d) => !d.userId || d.userId === user.uid);
       records.sort((a, b) => new Date(b.checkIn || b.date).getTime() - new Date(a.checkIn || a.date).getTime());
       setPointageList(records);
     });
