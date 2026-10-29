@@ -5,9 +5,9 @@ export const SettingsView = ({ typeOptions, natureOptions, handleAddOption, hand
   return (
     <Motion.div
       key="settings"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="max-w-4xl mx-auto"
     >
       <header className="mb-12">
@@ -29,7 +29,7 @@ export const SettingsView = ({ typeOptions, natureOptions, handleAddOption, hand
             {typeOptions.map(opt => (
               <div key={opt} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 group">
                 <span className="text-sm font-medium text-slate-200">{opt}</span>
-                <button onClick={() => handleRemoveOption('type', opt)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => handleRemoveOption('type', opt)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-[color,background-color,border-color,transform,opacity]">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -50,7 +50,7 @@ export const SettingsView = ({ typeOptions, natureOptions, handleAddOption, hand
             {natureOptions.map(opt => (
               <div key={opt} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 group">
                 <span className="text-sm font-medium text-slate-200">{opt}</span>
-                <button onClick={() => handleRemoveOption('nature', opt)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                <button onClick={() => handleRemoveOption('nature', opt)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-[color,background-color,border-color,transform,opacity]">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

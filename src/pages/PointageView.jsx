@@ -78,7 +78,7 @@ export const PointageView = ({ user }) => {
   return (
     <Motion.div
       key="pointage"
-      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="pb-12"
     >
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
@@ -102,7 +102,7 @@ export const PointageView = ({ user }) => {
             
             <form onSubmit={submitAddWorker} className="flex gap-2 mb-6">
               <input type="text" placeholder="Nom de l'ouvrier..." value={newWorkerName} onChange={(e) => setNewWorkerName(e.target.value)} className="input-field flex-1" required />
-              <button type="submit" disabled={isSubmitting} className="p-3 bg-cyan-500/20 text-cyan-400 rounded-xl hover:bg-cyan-500/30 transition-all"><UserPlus className="w-5 h-5" /></button>
+              <button type="submit" disabled={isSubmitting} className="p-3 bg-cyan-500/20 text-cyan-400 rounded-xl hover:bg-cyan-500/30 transition-[color,background-color,border-color,transform,opacity]"><UserPlus className="w-5 h-5" /></button>
             </form>
 
             <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-hide border-t border-line pt-2">
@@ -112,7 +112,7 @@ export const PointageView = ({ user }) => {
                 workers.map(w => (
                   <div key={w.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors group">
                     <span className="text-sm font-bold text-slate-200">{w.name}</span>
-                    <button onClick={() => removeWorker(w.id)} className="text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => removeWorker(w.id)} className="text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-[color,background-color,border-color,transform,opacity]"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))
               )}
@@ -120,7 +120,7 @@ export const PointageView = ({ user }) => {
           </Motion.section>
 
           {/* Manual Entry Form Toggle */}
-          <button onClick={() => setShowManualForm(!showManualForm)} className="w-full flex items-center justify-center gap-2 p-3 border border-line bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold transition-all text-xs">
+          <button onClick={() => setShowManualForm(!showManualForm)} className="w-full flex items-center justify-center gap-2 p-3 border border-line bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold transition-[color,background-color,border-color,transform,opacity] text-xs">
             <PlusCircle className="w-4 h-4" /> POINTAGE MANUEL (HORS TIMER)
           </button>
 
@@ -197,7 +197,7 @@ export const PointageView = ({ user }) => {
                   }
 
                   return (
-                    <div key={worker.id} className={`relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 ${cardStyle}`}>
+                    <div key={worker.id} className={`relative overflow-hidden rounded-2xl border p-5 transition-[color,background-color,border-color,transform,opacity] duration-300 ${cardStyle}`}>
                       <div className="flex justify-between items-start mb-6">
                         <div className="flex items-start gap-3">
                           {!isActive && (
@@ -221,21 +221,21 @@ export const PointageView = ({ user }) => {
                       {isActive ? (
                         <div className="flex gap-2">
                            {isPaused ? (
-                              <button onClick={() => handleResume(worker)} disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 font-black tracking-widest uppercase transition-all text-xs">
+                              <button onClick={() => handleResume(worker)} disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 font-black tracking-widest uppercase transition-[color,background-color,border-color,transform,opacity] text-xs">
                                 <PlayCircle className="w-4 h-4" /> Reprendre
                               </button>
                            ) : (
-                              <button onClick={() => handlePause(worker)} disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-500/20 text-slate-300 hover:bg-slate-500/40 hover:text-white font-black tracking-widest uppercase transition-all text-xs">
+                              <button onClick={() => handlePause(worker)} disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-500/20 text-slate-300 hover:bg-slate-500/40 hover:text-white font-black tracking-widest uppercase transition-[color,background-color,border-color,transform,opacity] text-xs">
                                 <PauseCircle className="w-4 h-4" /> Pause
                               </button>
                            )}
                            
-                           <button onClick={() => handleCheckOut(worker)} disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 font-black tracking-widest uppercase transition-all text-xs">
+                           <button onClick={() => handleCheckOut(worker)} disabled={isSubmitting} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 font-black tracking-widest uppercase transition-[color,background-color,border-color,transform,opacity] text-xs">
                              <Square className="w-4 h-4" fill="currentColor" /> Arrêter
                            </button>
                         </div>
                       ) : (
-                         <button onClick={() => handleCheckIn(worker)} disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 font-black tracking-widest uppercase transition-all">
+                         <button onClick={() => handleCheckIn(worker)} disabled={isSubmitting} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 font-black tracking-widest uppercase transition-[color,background-color,border-color,transform,opacity]">
                            <Play className="w-5 h-5" fill="currentColor" /> Démarrer Seul
                          </button>
                       )}

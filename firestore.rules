@@ -1,27 +1,64 @@
 rules_version = '2';
 
+// Security fix (copy, 2026-10-28): every collection the app actually uses
+// now has an owner rule. Previously this file covered only workReports and
+// appSettings, with everything else default-deny — yet the app read and
+// wrote workers, pointages, refeccions and enveloppe_reports, so the rules
+// actually deployed in the console must have been looser than this file.
+//
+// IMPORTANT: this file is NOT deployed by Vercel. To make these rules the
+// real protection for direct Firestore API access (not just through the
+// app's UI, which now filters by userId in code), paste this file into
+// Firebase Console > Firestore > Rules and publish it there.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Work Reports collection
-    match /workReports/{reportId} {
-      // Allow read/write only if the user is authenticated 
-      // AND the document's userId matches their UID
-      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      
-      // For creating new documents, the incoming data's userId must be their UID
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    // Helper: a document belongs to the signed-in user.
+    function isOwner() {
+      return request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    function creatingAsSelf() {
+      return request.auth != null && request.resource.data.userId == request.auth.uid;
     }
 
-    // App Settings collection (Nature/Type options)
+    // Work Reports: owner only
+    match /workReports/{reportId} {
+      allow read, update, delete: if isOwner();
+      allow create: if creatingAsSelf();
+    }
+
+    // Workers and Pointage: owner only (queries already filter by userId)
+    match /workers/{workerId} {
+      allow read, update, delete: if isOwner();
+      allow create: if creatingAsSelf();
+    }
+    match /pointages/{pointageId} {
+      allow read, update, delete: if isOwner();
+      allow create: if creatingAsSelf();
+    }
+
+    // Réfection: owner only (fixed 2026-10-28; was previously unfiltered)
+    match /refections/{refectionId} {
+      allow read, update, delete: if isOwner();
+      allow create: if creatingAsSelf();
+    }
+
+    // Enveloppe financière: owner only (fixed 2026-10-28; was previously
+    // unfiltered and written with no userId at all)
+    match /enveloppe_reports/{reportId} {
+      allow read, update, delete: if isOwner();
+      allow create: if creatingAsSelf();
+    }
+
+    // App Settings collection (Nature/Type options): shared by design,
+    // any authenticated user may read/write them for now.
     match /appSettings/options {
-      // Settings are currently shared via the top-level appSettings document
-      // We will allow any authenticated user to read/write them for now
       allow read, write: if request.auth != null;
     }
 

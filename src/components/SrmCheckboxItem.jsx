@@ -2,12 +2,12 @@ export default function SrmCheckboxItem({ label, name, form, handleInputChange }
   const isChecked = !!form[name];
   
   return (
-    <label className={`flex items-center p-3 rounded-xl border-2 transition-all cursor-pointer select-none shadow-sm ${
+    <label className={`flex items-center p-3 rounded-xl border-2 transition-[color,background-color,border-color,transform,opacity] cursor-pointer select-none shadow-sm ${
       isChecked
         ? 'border-accent bg-accent/5' 
         : 'border-line hover:border-slate-300 bg-white'
     }`}>
-      <div className={`w-5 h-5 flex flex-shrink-0 justify-center items-center mr-3 rounded-md border transition-all ${
+      <div className={`w-5 h-5 flex flex-shrink-0 justify-center items-center mr-3 rounded-md border transition-[color,background-color,border-color,transform,opacity] ${
         isChecked 
           ? 'bg-accent border-accent' 
           : 'border-slate-300 bg-slate-50'

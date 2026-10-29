@@ -8,9 +8,9 @@ export const DatabaseView = ({
   return (
     <Motion.div
       key="database"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
     >
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
         <div>
@@ -61,7 +61,7 @@ export const DatabaseView = ({
                 <div className="flex justify-end">
                   <button 
                     onClick={() => handleDelete(item.id)}
-                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-[color,background-color,border-color,transform,opacity] opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -82,7 +82,7 @@ export const DatabaseView = ({
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-900"
+              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-[color,background-color,border-color,transform,opacity] text-slate-900"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -99,7 +99,7 @@ export const DatabaseView = ({
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${currentPage === page ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'hover:bg-white/10 text-slate-400'}`}
+                    className={`w-8 h-8 text-xs font-bold rounded-lg transition-[color,background-color,border-color,transform,opacity] ${currentPage === page ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'hover:bg-white/10 text-slate-400'}`}
                   >
                     {page}
                   </button>
@@ -109,7 +109,7 @@ export const DatabaseView = ({
             <button 
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-slate-900"
+              className="p-2 border border-line rounded-lg hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-[color,background-color,border-color,transform,opacity] text-slate-900"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

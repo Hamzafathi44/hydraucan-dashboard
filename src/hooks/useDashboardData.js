@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import { 
-  collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, getDoc, where, writeBatch, getDocs, updateDoc 
+  collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, setDoc, getDoc, where, updateDoc 
 } from "firebase/firestore";
 import { toast } from 'sonner';
 import { FileText, TrendingUp, Clock } from 'lucide-react';
@@ -47,41 +47,13 @@ export const useDashboardData = (user) => {
   
   const ITEMS_PER_PAGE = 20;
 
-  // 1. Data Migration Script (runs once on load if needed)
-  useEffect(() => {
-    if (!user) return;
-    
-    const migrateOrphanedData = async () => {
-      try {
-        // Find documents that don't have a userId field
-        // We can't do where("userId", "==", null) easily if the field doesn't exist,
-        // so we'll fetch all reports for this script (since it's a small dataset)
-        // and filter client-side to find orphaned ones.
-        const q = query(collection(db, "workReports"));
-        const snapshot = await getDocs(q);
-        
-        const batch = writeBatch(db);
-        let count = 0;
-        
-        snapshot.forEach((document) => {
-          const data = document.data();
-          if (!data.userId) {
-            batch.update(doc(db, "workReports", document.id), { userId: user.uid });
-            count++;
-          }
-        });
-        
-        if (count > 0) {
-          await batch.commit();
-          toast.success(`${count} anciens rapports ont été assignés à votre compte.`);
-        }
-      } catch (err) {
-        console.error("Migration error:", err);
-      }
-    };
-    
-    migrateOrphanedData();
-  }, [user]);
+  // Security fix (copy, 2026-10-28): the orphan-migration effect that used
+  // to live here was REMOVED. It fetched every workReport and silently
+  // assigned any document without a userId to whoever happened to sign in
+  // first, which is a data-ownership flaw, not a migration. Documents
+  // without a userId are now simply not shown by the per-user queries;
+  // assigning them to an owner is a deliberate one-time action in the
+  // Firebase console, not something the app does on load.
 
   // 2. Load Settings (Options)
   useEffect(() => {

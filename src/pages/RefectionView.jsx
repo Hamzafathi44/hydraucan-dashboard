@@ -22,6 +22,9 @@ export const RefectionView = ({ user }) => {
   
   // ✅ NEW: State for the Month Filter
   const [selectedMonth, setSelectedMonth] = useState('');
+  // Single-day filter + download (copy, 2026-10-29): a day and a month
+  // are mutually exclusive — picking one clears the other.
+  const [selectedDay, setSelectedDay] = useState('');
 
   const [formData, setFormData] = useState({
     date: '',
@@ -155,11 +158,28 @@ export const RefectionView = ({ user }) => {
     generateReportPDF(filtered, titleMonth);
   };
 
-  // ✅ Filter by Search AND by Month
+  const handleDayPDF = () => {
+    if (!selectedDay) {
+      toast.error('Choisissez un jour d’abord');
+      return;
+    }
+    if (filtered.length === 0) {
+      toast.error('Aucune entrée pour ce jour');
+      return;
+    }
+    // Day title in French, e.g. "29 octobre 2026"; the month arg is
+    // unused when a custom title is given.
+    const dayLabel = new Date(selectedDay + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    generateReportPDF(filtered, selectedDay, `Réfection - ${dayLabel}`);
+  };
+
+  // ✅ Filter by Search AND by Month / Day (day wins, month cleared)
   const filtered = useMemo(() => {
     let result = refections;
 
-    if (selectedMonth) {
+    if (selectedDay) {
+      result = result.filter((r) => (r.date || '') === selectedDay);
+    } else if (selectedMonth) {
       result = result.filter((r) => (r.date || '').startsWith(selectedMonth));
     }
 
@@ -182,7 +202,7 @@ export const RefectionView = ({ user }) => {
         pointsText.toLowerCase().includes(q)
       );
     });
-  }, [refections, search, selectedMonth]);
+  }, [refections, search, selectedMonth, selectedDay]);
 
   const groupedFiltered = useMemo(() => {
     if (!filtered) return [];
@@ -405,8 +425,19 @@ export const RefectionView = ({ user }) => {
               <input
                 type="month"
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
+                onChange={(e) => { setSelectedMonth(e.target.value); if (e.target.value) setSelectedDay(''); }}
                 className="w-full sm:w-auto bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+              />
+            </div>
+
+            {/* Single-day filter: picking a day clears the month filter */}
+            <div className="relative">
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={(e) => { setSelectedDay(e.target.value); if (e.target.value) setSelectedMonth(''); }}
+                className="w-full sm:w-auto bg-slate-900/60 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                title="Filtrer par un seul jour"
               />
             </div>
 
@@ -428,6 +459,16 @@ export const RefectionView = ({ user }) => {
               <FileDown className="w-4 h-4" />
               Generate PDF
             </button>
+
+            <button
+              onClick={handleDayPDF}
+              disabled={!selectedDay}
+              className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-sm font-bold px-5 py-2 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-40"
+              title="Télécharger en PDF les entrées du jour sélectionné"
+            >
+              <FileDown className="w-4 h-4" />
+              PDF du jour
+            </button>
           </div>
         </div>
 
@@ -437,7 +478,7 @@ export const RefectionView = ({ user }) => {
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-center text-slate-500 py-10 text-sm">
-            {search || selectedMonth ? 'No matching entries' : 'No entries yet'}
+            {search || selectedMonth || selectedDay ? 'No matching entries' : 'No entries yet'}
           </p>
         ) : (
           <div className="overflow-x-auto">

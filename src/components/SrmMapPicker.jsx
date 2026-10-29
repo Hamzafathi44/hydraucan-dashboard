@@ -100,7 +100,7 @@ export default function SrmMapPicker({ isOpen, onClose, onConfirm, initialLocati
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-slate-900/60 transition-opacity duration-300">
       <div 
         className="relative w-full max-w-4xl h-[85vh] flex flex-col rounded-[32px] shadow-[0_32px_64px_rgba(0,0,0,0.3),_inset_0_1px_0_rgba(255,255,255,0.4)] overflow-hidden bg-white/95 border border-white/40 ring-1 ring-slate-900/5 backdrop-blur-2xl transition-transform duration-500 ease-out translate-y-0 scale-100"
-        style={{ animation: 'mapModalAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1)' }}
+        style={{ animation: 'mapModalAppear 0.5s var(--ease-out)' }}
       >
         <style>{`
           @keyframes mapModalAppear {
@@ -124,14 +124,14 @@ export default function SrmMapPicker({ isOpen, onClose, onConfirm, initialLocati
           <div className="flex gap-3">
             <button 
               onClick={handleAutoLocate}
-              className="group h-10 px-4 hidden sm:flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 shadow-sm transition-all hover:bg-blue-100 hover:border-blue-300 active:scale-95 text-blue-600 font-bold text-sm"
+              className="group h-10 px-4 hidden sm:flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 shadow-sm transition-[color,background-color,border-color,transform,opacity] hover:bg-blue-100 hover:border-blue-300 active:scale-95 text-blue-600 font-bold text-sm"
               title="Ma position actuelle"
             >
               <Navigation className="w-4 h-4 fill-blue-600/20" /> <span>Me localiser</span>
             </button>
             <button 
               onClick={onClose}
-              className="group w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 border border-slate-200 shadow-sm transition-all hover:bg-rose-50 hover:border-rose-200 hover:text-rose-500 active:scale-90"
+              className="group w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 border border-slate-200 shadow-sm transition-[color,background-color,border-color,transform,opacity] hover:bg-rose-50 hover:border-rose-200 hover:text-rose-500 active:scale-90"
             >
               <CloseIcon className="w-5 h-5 text-slate-400 group-hover:text-rose-500 transition-colors" />
             </button>
@@ -189,7 +189,7 @@ export default function SrmMapPicker({ isOpen, onClose, onConfirm, initialLocati
 
             {/* Crosshair decoration to feel more "tool" like */}
             {position && (
-              <div className="absolute top-4 right-4 z-[400] pointer-events-none bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2 transition-all">
+              <div className="absolute top-4 right-4 z-[400] pointer-events-none bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2 transition-[color,background-color,border-color,transform,opacity]">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                 <span className="text-xs font-bold text-slate-700">GPS Actif</span>
               </div>
@@ -202,14 +202,14 @@ export default function SrmMapPicker({ isOpen, onClose, onConfirm, initialLocati
           <div className="flex-1 w-full relative">
             {position ? (
               <div className="flex gap-4">
-                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm transition-all hover:bg-white hover:shadow-md hover:border-slate-300 group">
+                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm transition-[color,background-color,border-color,transform,opacity] hover:bg-white hover:shadow-md hover:border-slate-300 group">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-accent transition-colors">Longitude (X)</span>
                     <span className="font-mono text-base font-black text-slate-800 tracking-tight">{position.lng.toFixed(6)}</span>
                   </div>
                   <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold">X</div>
                 </div>
-                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm transition-all hover:bg-white hover:shadow-md hover:border-slate-300 group">
+                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm transition-[color,background-color,border-color,transform,opacity] hover:bg-white hover:shadow-md hover:border-slate-300 group">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-accent transition-colors">Latitude (Y)</span>
                     <span className="font-mono text-base font-black text-slate-800 tracking-tight">{position.lat.toFixed(6)}</span>
@@ -228,17 +228,17 @@ export default function SrmMapPicker({ isOpen, onClose, onConfirm, initialLocati
           <div className="flex w-full md:w-auto gap-3 items-center">
             <button 
               onClick={onClose}
-              className="flex-1 md:flex-none px-6 py-3.5 rounded-xl font-bold transition-all bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm active:scale-95"
+              className="flex-1 md:flex-none px-6 py-3.5 rounded-xl font-bold transition-[color,background-color,border-color,transform,opacity] bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm active:scale-95"
             >
               Annuler
             </button>
             <button 
               onClick={handleConfirm}
               disabled={!position}
-              className="group flex-1 md:flex-none px-8 py-3.5 bg-ink text-white font-black tracking-wide rounded-xl shadow-[0_8px_16px_rgba(30,43,88,0.2)] hover:bg-[#152345] hover:shadow-[0_12px_24px_rgba(30,43,88,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none disabled:active:scale-100 flex items-center gap-3"
+              className="group flex-1 md:flex-none px-8 py-3.5 bg-ink text-white font-black tracking-wide rounded-xl shadow-[0_8px_16px_rgba(30,43,88,0.2)] hover:bg-[#152345] hover:shadow-[0_12px_24px_rgba(30,43,88,0.3)] transition-[color,background-color,border-color,transform,opacity] active:scale-95 disabled:opacity-50 disabled:shadow-none disabled:active:scale-100 flex items-center gap-3"
             >
               <span>Valider les coordonnées</span>
-              <Target className="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+              <Target className="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-[color,background-color,border-color,transform,opacity]" />
             </button>
           </div>
         </div>

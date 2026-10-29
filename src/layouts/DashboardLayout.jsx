@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { motion as Motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { motion as Motion, AnimatePresence } from 'motion/react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import {
-  Menu, X, LayoutDashboard, FileText, Settings, LogOut, Droplets, PieChart, Clock, FileSpreadsheet, Wrench, Wallet, ShieldCheck
+  Menu, X, LayoutDashboard, FileText, Settings, LogOut, Droplets, PieChart, Clock, FileSpreadsheet, Wrench, Wallet, ShieldCheck, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 
 const MENU_GROUPS = [
@@ -66,6 +66,18 @@ export const DashboardLayout = ({ children, activeView, setActiveView, theme, on
     { id: 'green', name: 'Vert', light: '#15803D' },
   ];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // VibePrompt Batch 1 (copy only): collapsible sidebar, in the
+  // VibePrompt "collapsible sidebar nav" style — grouped nav that
+  // shrinks to icons only. Choice is saved, so it survives a
+  // refresh, like the active view. Desktop only; on mobile the
+  // drawer behaviour is unchanged. No VibePrompt code is copied
+  // here; the pattern is rebuilt locally in this shell's style.
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try { return localStorage.getItem('hydraucan-sidebar-collapsed') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('hydraucan-sidebar-collapsed', isCollapsed ? '1' : '0'); } catch {}
+  }, [isCollapsed]);
   const go = (view) => { setActiveView(view); setIsMobileMenuOpen(false); };
 
   return (
@@ -77,17 +89,25 @@ export const DashboardLayout = ({ children, activeView, setActiveView, theme, on
         />
       )}
 
-      <aside className={`sidebar ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`sidebar ${isCollapsed ? 'sidebar-collapsed' : ''} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="flex items-center justify-between">
-          <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="h-12 w-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="/logo-hydracane.png" alt="HYDRAUCAN" className="sidebar-logo h-12 w-auto object-contain" referrerPolicy="no-referrer" />
           <button aria-label="Fermer le menu" onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2.5 text-slate-500 hover:text-slate-900 bg-slate-200/60 rounded-lg">
             <X className="w-5 h-5" strokeWidth={1.5} />
+          </button>
+          <button
+            aria-label={isCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
+            title={isCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
+            onClick={() => setIsCollapsed((v) => !v)}
+            className="hidden lg:flex p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 rounded-lg"
+          >
+            {isCollapsed ? <ChevronsRight className="w-5 h-5" strokeWidth={1.5} /> : <ChevronsLeft className="w-5 h-5" strokeWidth={1.5} />}
           </button>
         </div>
 
         <div className="flex items-center gap-2 rounded-lg bg-white border border-line px-3 py-2.5">
           <ShieldCheck className="w-5 h-5 text-accent shrink-0" strokeWidth={1.5} />
-          <div>
+          <div className="user-chip-text">
             <p className="text-xs font-semibold text-slate-900 leading-tight">Espace employés</p>
             <p className="text-[11px] text-slate-500 leading-tight">Accès réservé · Hydraucan</p>
           </div>
@@ -96,19 +116,20 @@ export const DashboardLayout = ({ children, activeView, setActiveView, theme, on
         <nav className="flex-1 space-y-6 overflow-y-auto min-h-0 pr-1">
           {MENU_GROUPS.map((group) => (
             <div key={group.label}>
-              <p className="px-3 mb-2 text-xs font-medium text-slate-500">{group.label}</p>
+              <p className="group-label px-3 mb-2 text-xs font-medium text-slate-500">{group.label}</p>
               <div className="space-y-1">
                 {group.items.map(([view, Icon, label]) => (
                   <Motion.button
                     key={view}
                     onClick={() => go(view)}
+                    title={label}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                     className={`mono-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${activeView === view ? 'bg-[#E2E6EA] text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'}`}
                   >
                     <Icon className={`w-5 h-5 shrink-0 ${activeView === view ? 'text-accent' : 'text-slate-400'}`} strokeWidth={1.5} />
-                    {label}
+                    <span className="nav-label truncate">{label}</span>
                   </Motion.button>
                 ))}
               </div>
@@ -123,9 +144,10 @@ export const DashboardLayout = ({ children, activeView, setActiveView, theme, on
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             className="mono-nav-item w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-lg font-medium text-sm transition-colors"
+            title="Déconnexion"
           >
-            <LogOut className="w-5 h-5 text-slate-400" strokeWidth={1.5} />
-            Déconnexion
+            <LogOut className="w-5 h-5 shrink-0 text-slate-400" strokeWidth={1.5} />
+            <span className="nav-label truncate">Déconnexion</span>
           </Motion.button>
         </div>
       </aside>
@@ -147,7 +169,7 @@ export const DashboardLayout = ({ children, activeView, setActiveView, theme, on
           </div>
           <div className="flex items-center gap-2">
             {isThemeExempt && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line px-3 py-1 text-[11px] font-medium text-slate-600" title="Réfection et Enveloppe gardent le thème d'origine">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-line px-3 py-1 text-[11px] font-medium text-slate-600" title="Enveloppe garde le thème d'origine">
                 Thème d'origine
               </span>
             )}
@@ -169,7 +191,23 @@ export const DashboardLayout = ({ children, activeView, setActiveView, theme, on
         <main className={"main-content " + (isThemeExempt ? "theme-exempt" : "")}>
           {activeView !== 'home' && (
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-slate-900 leading-tight">{VIEW_TITLES[activeView] || 'Tableau de bord'}</h2>
+              {/* Transitions Batch 4 (copy only): text states swap,
+                  in the transitions.dev "text states swap" style —
+                  rebuilt locally. The page title blurs and fades
+                  out, then the new title blurs in, on every view
+                  change. Presentation only. */}
+              <AnimatePresence mode="wait">
+                <Motion.h2
+                  key={activeView}
+                  initial={{ opacity: 0, filter: 'blur(4px)', y: 6 }}
+                  animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                  exit={{ opacity: 0, filter: 'blur(4px)', y: -6 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="text-2xl font-semibold text-slate-900 leading-tight"
+                >
+                  {VIEW_TITLES[activeView] || 'Tableau de bord'}
+                </Motion.h2>
+              </AnimatePresence>
             </div>
           )}
           {children}

@@ -14,7 +14,23 @@
   --color-line: #EDEDED;
   --color-accent: #16294D;
   --color-sidebar: #EDF1F5;
+
+  /* Audit finding 10 (copy only): shared easing tokens, from
+     Emil's AUDIT.md — one curve for UI entrances, not five
+     hand-typed near-identical ones. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
+
+/* Audit missed opportunity (copy only): accent switches were a
+   hard cut. Registering the accent/frame colours as <color>
+   properties lets elements that already transition colours
+   interpolate between accents instead of jumping. Browsers that
+   ignore @property fall back to the instant switch — no breakage. */
+@property --color-accent { syntax: '<color>'; inherits: true; initial-value: #16294D; }
+@property --color-bg { syntax: '<color>'; inherits: true; initial-value: #EDF1F5; }
+@property --color-sidebar { syntax: '<color>'; inherits: true; initial-value: #EDF1F5; }
 
 /* Theme-change batch (copy only): accent picker.
    data-accent on <html> retints the shell and every accent utility
@@ -52,7 +68,39 @@ html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
   }
 
   .sidebar {
-    @apply w-[240px] max-w-[86vw] bg-sidebar p-5 sm:p-6 flex flex-col gap-6 fixed lg:sticky top-0 h-[100dvh] z-50 transition-transform duration-300 ease-in-out overflow-y-auto;
+    @apply w-[240px] max-w-[86vw] bg-sidebar p-5 sm:p-6 flex flex-col gap-6 fixed lg:sticky top-0 h-[100dvh] z-50 overflow-y-auto;
+    /* Audit finding 5 (copy only): collapsing changed width
+       (240px → 76px) but only transform was transitioned, so the
+       collapse snapped. Width and background now transition too. */
+    transition: transform 0.3s ease-in-out, width 0.3s var(--ease-out), background-color 0.2s ease;
+  }
+  /* VibePrompt Batch 1 (copy only): collapsed sidebar — desktop
+     only, icons only. Labels, group headings and the employee-chip
+     text hide; nav buttons centre their icons; the logo is capped
+     so it cannot overflow the narrow bar. The collapsed choice is
+     saved in DashboardLayout.jsx and survives a refresh. */
+  /* Audit finding 4 (copy only): the custom toast keyframe from
+     the transitions batch is removed. Keyframes restart from zero
+     on rapidly triggered toasts; Sonner's own enter transition
+     retargets instead. No toast text, logic or trigger is changed. */
+  .sidebar.sidebar-collapsed {
+    width: 76px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .sidebar-collapsed .nav-label,
+  .sidebar-collapsed .group-label,
+  .sidebar-collapsed .user-chip-text {
+    display: none;
+  }
+  .sidebar-collapsed .mono-nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .sidebar-collapsed .sidebar-logo {
+    max-width: 100%;
+    height: 32px;
   }
 
   /* Batch 1 — Amicro-compatible mono sidebar/top bar (style only).
@@ -106,7 +154,7 @@ html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
   }
 
   .data-row {
-    @apply grid grid-cols-[1fr_1.5fr_1fr_1fr_1fr_60px] p-4 border-b border-line transition-all duration-200 hover:bg-slate-50 cursor-default;
+    @apply grid grid-cols-[1fr_1.5fr_1fr_1fr_1fr_60px] p-4 border-b border-line transition-[color,background-color,border-color,transform,opacity] duration-200 hover:bg-slate-50 cursor-default;
   }
 
   .col-header {
@@ -122,7 +170,7 @@ html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
   }
 
   .input-field {
-    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2 focus:ring-[#16294D]/20 focus:border-[#16294D];
+    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder:text-slate-400 transition-[color,background-color,border-color,transform,opacity] focus:outline-none focus:ring-2 focus:ring-[#16294D]/20 focus:border-[#16294D];
   }
 
   select.input-field {
@@ -134,15 +182,15 @@ html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
   }
 
   .btn-primary {
-    @apply px-6 py-3 bg-[#16294D] text-white text-sm font-semibold rounded-lg transition-all hover:bg-[#0F1E3D] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
+    @apply px-6 py-3 bg-[#16294D] text-white text-sm font-semibold rounded-lg transition-[color,background-color,border-color,transform,opacity] hover:bg-[#0F1E3D] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
   }
 
   .btn-accent {
-    @apply px-6 py-3 bg-[#16294D] text-white text-sm font-semibold rounded-lg transition-all hover:bg-[#0F1E3D] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
+    @apply px-6 py-3 bg-[#16294D] text-white text-sm font-semibold rounded-lg transition-[color,background-color,border-color,transform,opacity] hover:bg-[#0F1E3D] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2;
   }
 
   .month-pill {
-    @apply px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-full border border-slate-200 transition-all hover:border-slate-300 bg-white text-slate-600 shadow-sm;
+    @apply px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-full border border-slate-200 transition-[color,background-color,border-color,transform,opacity] hover:border-slate-300 bg-white text-slate-600 shadow-sm;
   }
 
   .month-pill-active {
@@ -150,7 +198,7 @@ html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
   }
 
   .search-bar {
-    @apply flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg w-full max-w-md focus-within:ring-2 focus-within:ring-[#16294D]/15 focus-within:border-[#16294D] transition-all text-slate-900;
+    @apply flex items-center gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-lg w-full max-w-md focus-within:ring-2 focus-within:ring-[#16294D]/15 focus-within:border-[#16294D] transition-[color,background-color,border-color,transform,opacity] text-slate-900;
   }
 
   .scrollbar-hide::-webkit-scrollbar {
@@ -163,19 +211,19 @@ html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
 
   .uisocial-card {
     @apply bg-white rounded-[48px] shadow-[0_80px_160px_rgba(0,0,0,0.8)] overflow-hidden;
-    animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: cardAppear 0.8s var(--ease-out);
   }
   
   .uisocial-input {
-    @apply w-full px-5 py-4 bg-[#F9FAFB] border border-slate-100 rounded-2xl text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1A2B56]/5 focus:border-[#1A2B56]/20 transition-all;
+    @apply w-full px-5 py-4 bg-[#F9FAFB] border border-slate-100 rounded-2xl text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#1A2B56]/5 focus:border-[#1A2B56]/20 transition-[color,background-color,border-color,transform,opacity];
   }
   
   .uisocial-btn-primary {
-    @apply w-full py-5 bg-[#1A2B56] hover:bg-[#152345] text-white text-base font-black rounded-2xl shadow-[0_12px_24px_rgba(26,43,86,0.3)] transition-all active:scale-[0.98] tracking-tight;
+    @apply w-full py-5 bg-[#1A2B56] hover:bg-[#152345] text-white text-base font-black rounded-2xl shadow-[0_12px_24px_rgba(26,43,86,0.3)] transition-[color,background-color,border-color,transform,opacity] active:scale-[0.98] tracking-tight;
   }
 
   .uisocial-btn-google {
-    @apply w-full py-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-2xl flex items-center justify-center gap-3 transition-all shadow-sm;
+    @apply w-full py-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold rounded-2xl flex items-center justify-center gap-3 transition-[color,background-color,border-color,transform,opacity] shadow-sm;
   }
 
   @keyframes cardAppear {
@@ -209,11 +257,22 @@ html.theme-dark[data-accent="navy"] { --color-accent: #8AA0BC; }
   [class*="group-hover:opacity-100"] {
     opacity: 1 !important;
   }
+  /* Audit finding 11 (copy only): hover scale is gated to devices
+     with a fine pointer — on touch it would otherwise stick on tap. */
+  [class*="hover:scale-"] {
+    scale: 1 !important;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
+  /* Audit finding 6 (copy only): reduced motion is gentler, not
+     zero. Movement (transform/position) is dropped, but opacity
+     and colour transitions that aid comprehension are kept at
+     0.2s, per Emil's AUDIT.md. Motion-JS page transitions are
+     also skipped via useReducedMotion in App.jsx. */
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease !important;
+    scroll-behavior: auto !important;
   }
 }
 

@@ -107,7 +107,7 @@ export default function MaterialBuilder({ type, data = { main: '', items: [] }, 
             <button 
               type="button" 
               onClick={addItem} 
-              className="text-blue-600 hover:text-white hover:bg-blue-600 px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-lg transition-all border border-blue-200 hover:border-blue-600 shadow-sm"
+              className="text-blue-600 hover:text-white hover:bg-blue-600 px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-lg transition-[color,background-color,border-color,transform,opacity] border border-blue-200 hover:border-blue-600 shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" /> Ajouter
             </button>
@@ -120,7 +120,7 @@ export default function MaterialBuilder({ type, data = { main: '', items: [] }, 
                const useMl = articleDef?.unit === 'ml';
 
                return (
-                 <div key={idx} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center relative bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm transition-all hover:border-blue-300">
+                 <div key={idx} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center relative bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-sm transition-[color,background-color,border-color,transform,opacity] hover:border-blue-300">
                     <div className="flex-1 sm:w-1/3 flex flex-col gap-2">
                       <select 
                         className="input-field w-full text-xs py-2 font-medium text-slate-700"

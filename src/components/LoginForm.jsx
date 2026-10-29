@@ -59,7 +59,7 @@ export const LoginForm = ({ theme }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full px-5 py-4 border rounded-2xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-all shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              className={`w-full px-5 py-4 border rounded-2xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-[color,background-color,border-color,transform,opacity] shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
               placeholder="admin (ou adresse complète)"
             />
           </div>
@@ -73,7 +73,7 @@ export const LoginForm = ({ theme }) => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`w-full px-5 py-4 border rounded-2xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-all shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+              className={`w-full px-5 py-4 border rounded-2xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-600 transition-[color,background-color,border-color,transform,opacity] shadow-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
               placeholder="••••••••"
             />
             <div className="text-right mt-2">
@@ -86,7 +86,7 @@ export const LoginForm = ({ theme }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 mt-6 bg-[#16294D] hover:bg-[#0F1E3D] text-white text-base font-black rounded-2xl shadow-sm transition-all active:scale-[0.98] tracking-tight flex justify-center items-center"
+            className="w-full py-4 mt-6 bg-[#16294D] hover:bg-[#0F1E3D] text-white text-base font-black rounded-2xl shadow-sm transition-[color,background-color,border-color,transform,opacity] active:scale-[0.98] tracking-tight flex justify-center items-center"
           >
             {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Connexion"}
           </button>

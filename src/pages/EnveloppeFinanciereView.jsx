@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, AlertTriangle, Pencil, Search } from 'lucide-react';
+import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, AlertTriangle, Pencil, Search, Copy } from 'lucide-react';
 
 // Proof images used to be stored as base64 inside the Firestore document.
 // Firestore documents are limited to ~1 MiB, so a report with a proof for
@@ -18,13 +18,21 @@ import { Wallet, FileDown, Plus, Trash2, Image as ImageIcon, X, Save, Loader2, A
 // and are migrated to Storage the next time their report is saved.
 const PROOF_FIELDS = ['cimentImg', 'argileImg', 'carburantImg', 'autresImg'];
 
-// Material types for the "Matériau" column (copy, 2026-10-29): this column
-// replaces the old fixed "Argile / Faïence" column. Each day-row picks its
-// material — Argile, Faïence, Revsol, Pavé, etc. — and "Autre" opens a
-// free-text field to type any other material. Quantity, unit price and
-// proof work exactly as before, whatever the type.
+// Material types for the "Matériau utilisé" column (copy, 2026-10-29):
+// each day-row picks its material type from this select list — Argile,
+// Faïence, Revsol, Pavé, etc. — because one column covers all of them.
+// Free typing for anything else lives in the Autres section (autresType),
+// not in this column.
 const MATERIAL_TYPES = ['Argile', 'Faïence', 'Revsol', 'Pavé', 'Béton', 'Goudron', 'Lamozik', 'Carrelage', 'Autre'];
 const materialLabelOf = (row) => row.argileType === 'Autre' ? (row.argileCustomType || 'Autre') : (row.argileType || 'Argile');
+
+// Display format for money (copy, 2026-10-29): 1000 -> "1000.00 DH".
+// Used for every displayed price/amount; editable inputs stay plain
+// numbers while typing, since a number field cannot show the " DH".
+const moneyDH = (v) => {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? `${n.toFixed(2)} DH` : '';
+};
 
 const uploadProofToCloudinary = async (dataUrl, rowId, field) => {
   // Second storage (free Cloudinary), tried FIRST so proofs save now
@@ -57,13 +65,26 @@ const uploadProofToCloudinary = async (dataUrl, rowId, field) => {
   }
 };
 
-const uploadProofImage = async (dataUrl, rowId, field) => {
+const uploadProofImage = async (dataUrl, rowId, field, ownerUid) => {
   // Missing proof field on an old report must become null, never undefined:
   // Firestore updateDoc() rejects explicit undefined values, which made
   // editing old reports fail even without a new proof.
   if (dataUrl === undefined) return null;
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
     return dataUrl;
+  }
+  // Security fix (copy, 2026-10-28): proof validation, applied before any
+  // upload — only images and PDFs, max ~10 MB. Defence in depth only: the
+  // real gate for Cloudinary must be the unsigned preset's own format/size
+  // limits in the Cloudinary dashboard, because anyone can call the upload
+  // API directly with the preset name from the shipped bundle.
+  const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
+  const approxBytes = Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
+  if (!mime.startsWith('image/') && mime !== 'application/pdf') {
+    throw new Error('Preuve refusée : seuls les images et PDF sont acceptés.');
+  }
+  if (approxBytes > 10 * 1024 * 1024) {
+    throw new Error('Preuve refusée : fichier trop volumineux (limite 10 Mo).');
   }
   // Try Cloudinary first; if it is not configured or it fails, fall
   // through to Firebase Storage below (kept for when Blaze is fixed).
@@ -75,7 +96,11 @@ const uploadProofImage = async (dataUrl, rowId, field) => {
   }
   const storage = getStorage();
   const blob = await fetch(dataUrl).then((r) => r.blob());
-  const path = `enveloppe_preuves/${Date.now()}-${Math.random().toString(36).slice(2)}/${rowId}-${field}.jpg`;
+  // Security fix (copy, 2026-10-28): Firebase Storage proofs are stored
+  // under the owner's uid, matching the per-user Storage rules, instead of
+  // a flat shared folder any authenticated user could read or delete.
+  const ownerFolder = ownerUid || 'legacy';
+  const path = `enveloppe_preuves/${ownerFolder}/${Date.now()}-${Math.random().toString(36).slice(2)}/${rowId}-${field}.jpg`;
   // Never hang forever on a slow / blocked upload: fail fast after 20s
   // so the user gets a real error instead of a stuck "Sauvegarde..." button.
   // The underlying upload error is also logged, because a timeout usually
@@ -113,7 +138,7 @@ const cleanRowForSave = (row) => {
 // keeping the base64 proofs ONLY when the whole document stays under
 // ~850 KB, so a small edit still saves. Large reports still need Storage,
 // and then the real Storage error is thrown.
-const prepareRowsForSave = async (rowsToSave, headerForSave, onProgress) => {
+const prepareRowsForSave = async (rowsToSave, headerForSave, onProgress, ownerUid) => {
   const jobs = [];
   rowsToSave.forEach((row, rowIndex) => {
     PROOF_FIELDS.forEach((field) => {
@@ -125,15 +150,24 @@ const prepareRowsForSave = async (rowsToSave, headerForSave, onProgress) => {
   const results = rowsToSave.map((r) => cleanRowForSave(r));
   let done = 0;
   let firstError = null;
+  // Shared proofs (copy, 2026-10-29): identical base64 images (one proof
+  // reused for several consommations) are uploaded ONCE and share the
+  // same URL, so the PDF grouping by image still works after a reload.
+  const uploadCache = new Map();
   onProgress?.(0, jobs.length);
   await Promise.all(
     jobs.map(async (job) => {
       try {
-        results[job.rowIndex][job.field] = await uploadProofImage(
-          rowsToSave[job.rowIndex][job.field],
-          rowsToSave[job.rowIndex].id,
-          job.field
-        );
+        const dataUrl = rowsToSave[job.rowIndex][job.field];
+        if (!uploadCache.has(dataUrl)) {
+          uploadCache.set(dataUrl, uploadProofImage(
+            dataUrl,
+            rowsToSave[job.rowIndex].id,
+            job.field,
+            ownerUid
+          ));
+        }
+        results[job.rowIndex][job.field] = await uploadCache.get(dataUrl);
       } catch (e) {
         if (!firstError) firstError = e;
         // Keep the original base64 proof for a possible fallback below.
@@ -154,8 +188,8 @@ const prepareRowsForSave = async (rowsToSave, headerForSave, onProgress) => {
   return results;
 };
 
-export const EnveloppeFinanciereView = () => {
-  const { reports, loading, addReport, updateReport, deleteReport } = useEnveloppes();
+export const EnveloppeFinanciereView = ({ user }) => {
+  const { reports, loading, addReport, updateReport, deleteReport } = useEnveloppes(user);
   
   const [saving, setSaving] = useState(false);
   const [uploadingProofs, setUploadingProofs] = useState(0);
@@ -168,6 +202,10 @@ export const EnveloppeFinanciereView = () => {
   
   const fileInputRef = useRef(null);
   const [activeUpload, setActiveUpload] = useState({ rowId: null, field: null });
+  // Shared proof (copy, 2026-10-29): { rowId, field } of the empty proof
+  // slot the user wants to fill by reusing an existing proof image,
+  // instead of uploading a new one. Null when the picker is closed.
+  const [reuseTarget, setReuseTarget] = useState(null);
 
   const createEmptyRow = () => ({
     id: Date.now() + Math.random(),
@@ -176,7 +214,7 @@ export const EnveloppeFinanciereView = () => {
     argileQt: '', argilePrix: '', argileImg: null,
     argileType: 'Argile', argileCustomType: '',
     carburant: '', carburantImg: null,
-    autres: '', autresImg: null
+    autres: '', autresImg: null, autresType: ''
   });
 
   const resetForm = () => {
@@ -201,7 +239,7 @@ export const EnveloppeFinanciereView = () => {
         argileQt: r.argileQt || '', argilePrix: r.argilePrix || '', argileImg: r.argileImg ?? null,
         argileType: r.argileType || 'Argile', argileCustomType: r.argileCustomType || '',
         carburant: r.carburant || '', carburantImg: r.carburantImg ?? null,
-        autres: r.autres || '', autresImg: r.autresImg ?? null
+        autres: r.autres || '', autresImg: r.autresImg ?? null, autresType: r.autresType || ''
       }))
     );
     setEditingId(report.id);
@@ -225,7 +263,7 @@ export const EnveloppeFinanciereView = () => {
       // falls back to base64 instead of failing the save.
       const rowsToSave = await prepareRowsForSave(rows, header, (done, total) => {
         setSaveProgress(total > 0 ? `${done}/${total} preuves` : '');
-      });
+      }, user?.uid);
       let result;
       if (editingId) {
         result = await updateReport(editingId, { header, rows: rowsToSave });
@@ -252,20 +290,39 @@ export const EnveloppeFinanciereView = () => {
 
   const handleHeaderChange = (e) => setHeader({ ...header, [e.target.name]: e.target.value });
   const handleRowChange = (id, field, value) => setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r));
-  // Material field (copy, 2026-10-29): a native <select> cannot be typed
-  // in, which made "Autre" unusable in practice. This is a combobox: one
-  // text field with the material list as suggestions — pick Faïence,
-  // Revsol, Pavé… or just type any other material name directly. A typed
-  // name that is not in the list is stored as a custom "Autre" value.
-  const handleMaterialChange = (id, value) => setRows(rows.map((r) => {
-    if (r.id !== id) return r;
-    if (MATERIAL_TYPES.includes(value) && value !== 'Autre') {
-      return { ...r, argileType: value, argileCustomType: '' };
-    }
-    if (value === '') return { ...r, argileType: 'Argile', argileCustomType: '' };
-    return { ...r, argileType: 'Autre', argileCustomType: value === 'Autre' ? '' : value };
-  }));
-  const materialInputValue = (row) => row.argileType === 'Autre' ? (row.argileCustomType || '') : (row.argileType || 'Argile');
+  // Autres typing (copy, 2026-10-29): free typing lives in the Autres
+  // section (autresType field, above the Autres amount), while the
+  // Matériau utilisé column uses the MATERIAL_TYPES select list above.
+  // Shared proof (copy, 2026-10-29): one proof image (one invoice, one
+  // receipt) can cover two or three consommations, whatever their date or
+  // type. Reusing copies the image reference into another slot — no
+  // re-upload, no re-photographing. Sources are the proofs already in the
+  // editor rows and in the saved reports (any date, any material), each
+  // shown once even if already shared. A reused URL stays a URL on save
+  // (no new upload); a reused base64 proof is uploaded once on save, as
+  // any new proof would be.
+  const proofTypeLabel = (row, field) => field === 'cimentImg' ? 'Ciment'
+    : field === 'argileImg' ? materialLabelOf(row)
+    : field === 'carburantImg' ? 'Carburant' : 'Autres';
+  const availableProofs = () => {
+    const list = [];
+    const push = (img, label) => { if (img) list.push({ img, label }); };
+    rows.forEach((r) => PROOF_FIELDS.forEach((f) => {
+      if (reuseTarget && r.id === reuseTarget.rowId && f === reuseTarget.field) return;
+      push(r[f], `${r.date || 'Sans date'} — ${proofTypeLabel(r, f)}`);
+    }));
+    (reports || []).forEach((rep) => (rep.rows || []).forEach((r) => PROOF_FIELDS.forEach((f) =>
+      push(r[f], `${rep.beneficiaire ? rep.beneficiaire + ' — ' : ''}${r.date || 'Sans date'} — ${proofTypeLabel(r, f)}`)
+    )));
+    const seen = new Set();
+    return list.filter((p) => { if (seen.has(p.img)) return false; seen.add(p.img); return true; });
+  };
+  const applyReusedProof = (img) => {
+    if (!reuseTarget) return;
+    setRows(rows.map((r) => (r.id === reuseTarget.rowId ? { ...r, [reuseTarget.field]: img } : r)));
+    setReuseTarget(null);
+    toast.success('Preuve réutilisée');
+  };
   const addRow = () => setRows([...rows, createEmptyRow()]);
   const removeRow = (id) => { if (rows.length > 1) setRows(rows.filter(r => r.id !== id)); };
 
@@ -397,21 +454,21 @@ export const EnveloppeFinanciereView = () => {
     const tableBody = processedRows.map((d, index) => [
       index + 1,
       d.date || '',
-      d.cimentQt, d.cimentPrix, d.cimentTotal ? d.cimentTotal.toFixed(2) : '',
+      d.cimentQt, moneyDH(d.cimentPrix), d.cimentTotal ? moneyDH(d.cimentTotal) : '',
       materialLabelOf(d),
-      d.argileQt, d.argilePrix, d.argileTotal ? d.argileTotal.toFixed(2) : '',
-      d.carburant,
-      d.autres,
-      d.totalLigne ? d.totalLigne.toFixed(2) : ''
+      d.argileQt, moneyDH(d.argilePrix), d.argileTotal ? moneyDH(d.argileTotal) : '',
+      moneyDH(d.carburant),
+      d.autresType ? `${d.autresType} : ${moneyDH(d.autres)}` : moneyDH(d.autres),
+      d.totalLigne ? moneyDH(d.totalLigne) : ''
     ]);
 
     tableBody.push([
       { content: 'TOTAL', colSpan: 11, styles: { fontStyle: 'bold', halign: 'center' } },
-      finalTotals.totalGeneral.toFixed(2)
+      moneyDH(finalTotals.totalGeneral)
     ]);
 
     autoTable(doc, {
-      head: [['N°', 'Date', 'Ciment Qt', 'Ciment P.U.', 'Ciment Total', 'Matériau', 'Mat. Qt', 'Mat. P.U.', 'Mat. Total', 'Carburant', 'Autres', 'Total']],
+      head: [['N°', 'Date', 'Ciment Qt', 'Ciment P.U.', 'Ciment Total', 'Matériau utilisé', 'Mat. Qt', 'Mat. P.U.', 'Mat. Total', 'Carburant', 'Autres', 'Total']],
       body: tableBody,
       startY: 50,
       theme: 'grid',
@@ -435,9 +492,9 @@ export const EnveloppeFinanciereView = () => {
     autoTable(doc, {
       head: [['Récapitulatif', 'Montant (DH)']],
       body: [
-        ['Montant alloué', alloue.toFixed(2)],
-        ['Total dépensé', finalTotals.totalGeneral.toFixed(2)],
-        ['Solde restant', solde.toFixed(2)]
+        ['Montant alloué', moneyDH(alloue)],
+        ['Total dépensé', moneyDH(finalTotals.totalGeneral)],
+        ['Solde restant', moneyDH(solde)]
       ],
       startY: finalY,
       theme: 'grid',
@@ -452,46 +509,73 @@ export const EnveloppeFinanciereView = () => {
       if (row.cimentImg) imagesToPrint.push({ label: 'Ciment', amount: row.cimentTotal, img: row.cimentImg, line: index + 1 });
       if (row.argileImg) imagesToPrint.push({ label: materialLabelOf(row), amount: row.argileTotal, img: row.argileImg, line: index + 1 });
       if (row.carburantImg) imagesToPrint.push({ label: 'Carburant', amount: parseFloat(row.carburant) || 0, img: row.carburantImg, line: index + 1 });
-      if (row.autresImg) imagesToPrint.push({ label: 'Autres', amount: parseFloat(row.autres) || 0, img: row.autresImg, line: index + 1 });
+      if (row.autresImg) imagesToPrint.push({ label: row.autresType || 'Autres', amount: parseFloat(row.autres) || 0, img: row.autresImg, line: index + 1 });
     });
 
-    if (imagesToPrint.length > 0) {
+    // Shared proofs (copy, 2026-10-29): consommations that share one
+    // proof image (via "Réutiliser") are grouped by image, so the image
+    // is printed ONCE, with the list of the consommations it covers
+    // (line, type, amount) above it — never one copy per consommation.
+    const mergedProofs = [];
+    imagesToPrint.forEach((it) => {
+      const ex = mergedProofs.find((m) => m.img === it.img);
+      if (ex) ex.entries.push({ line: it.line, label: it.label, amount: it.amount });
+      else mergedProofs.push({ img: it.img, entries: [{ line: it.line, label: it.label, amount: it.amount }] });
+    });
+
+    if (mergedProofs.length > 0) {
       doc.addPage();
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.setTextColor(0, 0, 0);
       doc.text("JUSTIFICATIFS DES DÉPENSES (PREUVES)", 148, 15, { align: 'center' });
 
-      let count = 0;
-      for (const item of imagesToPrint) {
-        if (count > 0 && count % 6 === 0) {
+      // 2-column grid, but rows grow to fit shared proofs' caption
+      // lists (landscape A4: 297 x 210 mm, so rows must end by y = 200).
+      const boxWidth = 80;
+      const boxHeight = 55;
+      const padding = 4;
+      let rowTop = 25;
+      let rowMaxHeight = 0;
+
+      for (let idx = 0; idx < mergedProofs.length; idx++) {
+        const item = mergedProofs[idx];
+        const col = idx % 2;
+        if (col === 0 && idx > 0) {
+          rowTop += rowMaxHeight + 5;
+          rowMaxHeight = 0;
+        }
+
+        const captionLines = item.entries.length === 1
+          ? [`Ligne ${item.entries[0].line} - ${item.entries[0].label} : ${item.entries[0].amount.toFixed(2)} DH`]
+          : [`Preuve partagée — ${item.entries.length} consommations :`,
+             ...item.entries.map((e) => `Ligne ${e.line} - ${e.label} : ${e.amount.toFixed(2)} DH`)];
+        const titleHeight = 5 * captionLines.length + 1;
+        const itemHeight = titleHeight + boxHeight;
+        if (rowTop + itemHeight > 200) {
           doc.addPage();
           doc.setFont("helvetica", "bold");
           doc.setFontSize(16);
+          doc.setTextColor(0, 0, 0);
           doc.text("JUSTIFICATIFS DES DÉPENSES (SUITE)", 148, 15, { align: 'center' });
+          rowTop = 25;
+          rowMaxHeight = 0;
         }
 
-        const col = count % 2; 
-        const row = Math.floor((count % 6) / 2); 
+        const x = col === 0 ? 50 : 50 + boxWidth + 37;
+        const y = rowTop + titleHeight;
 
-        // ✅ NEW SIZE: 80 WIDTH x 55 HEIGHT
-        const boxWidth = 80; 
-        const boxHeight = 55; 
-        const padding = 4; 
-        
-        // Centered columns for 80mm width
-        const x = col === 0 ? 50 : 50 + boxWidth + 37; 
-        const y = 25 + (row * 60); 
+        captionLines.forEach((line, li) => {
+          doc.setFont("helvetica", li === 0 ? "bold" : "normal");
+          doc.setFontSize(li === 0 ? 10 : 9);
+          doc.setTextColor(40, 40, 40);
+          doc.text(line, x, rowTop + 5 * li + 4);
+        });
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(40, 40, 40);
-        doc.text(`Ligne ${item.line} - ${item.label} : ${item.amount.toFixed(2)} DH`, x, y - 4);
+        doc.setFillColor(248, 250, 252);
+        doc.rect(x, y, boxWidth, boxHeight, 'F');
 
-        doc.setFillColor(248, 250, 252); 
-        doc.rect(x, y, boxWidth, boxHeight, 'F'); 
-        
-        doc.setDrawColor(200, 200, 200); 
+        doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.3);
         doc.rect(x, y, boxWidth, boxHeight, 'S');
 
@@ -514,7 +598,7 @@ export const EnveloppeFinanciereView = () => {
           doc.text("Erreur d'affichage", x + padding + 10, y + boxHeight / 2);
         }
 
-        count++;
+        rowMaxHeight = Math.max(rowMaxHeight, itemHeight);
       }
     }
 
@@ -594,7 +678,7 @@ export const EnveloppeFinanciereView = () => {
                 <th className="py-2 px-1 border border-slate-700 w-8" rowSpan={2}>N°</th>
                 <th className="py-2 px-1 border border-slate-700 w-24" rowSpan={2}>Date</th>
                 <th className="py-1 border border-slate-700" colSpan={4}>Ciment</th>
-                <th className="py-1 border border-slate-700" colSpan={5}>Matériau</th>
+                <th className="py-1 border border-slate-700" colSpan={5}>Matériau utilisé</th>
                 <th className="py-1 border border-slate-700" colSpan={2}>Carburant</th>
                 <th className="py-1 border border-slate-700" colSpan={2}>Autres</th>
                 <th className="py-2 px-1 border border-slate-700" rowSpan={2}>Total</th>
@@ -627,36 +711,28 @@ export const EnveloppeFinanciereView = () => {
                   
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentQt} onChange={(e) => handleRowChange(d.id, 'cimentQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.cimentPrix} onChange={(e) => handleRowChange(d.id, 'cimentPrix', e.target.value)} className={inputClass} /></td>
-                  <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.cimentTotal ? d.cimentTotal.toFixed(2) : ''}</td>
+                  <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.cimentTotal ? moneyDH(d.cimentTotal) : ''}</td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.cimentTotal > 0 && (
                       d.cimentImg ? (
                         <div className="relative group"><img src={d.cimentImg} className="h-8 w-full object-cover rounded border border-slate-600" /><button onClick={() => removeImage(d.id, 'cimentImg')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
-                      ) : <button onClick={() => triggerImageUpload(d.id, 'cimentImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button>
+                      ) : (<><button onClick={() => triggerImageUpload(d.id, 'cimentImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button><button onClick={() => setReuseTarget({ rowId: d.id, field: 'cimentImg' })} className={imgButtonClass}><Copy className="w-3 h-3"/>Réutiliser</button></>)
                     )}
                   </td>
 
                   <td className="p-1 border border-slate-800 align-top">
-                    <input
-                      type="text"
-                      list={`material-types-${d.id}`}
-                      value={materialInputValue(d)}
-                      onChange={(e) => handleMaterialChange(d.id, e.target.value)}
-                      placeholder="Choisir ou taper un matériau…"
-                      className={`${inputClass} !py-1.5 !text-[11px] min-w-[110px]`}
-                    />
-                    <datalist id={`material-types-${d.id}`}>
-                      {MATERIAL_TYPES.filter((t) => t !== 'Autre').map((t) => <option key={t} value={t} />)}
-                    </datalist>
+                    <select value={d.argileType || 'Argile'} onChange={(e) => handleRowChange(d.id, 'argileType', e.target.value)} className={`${inputClass} !py-1.5 !text-[11px] min-w-[95px]`}>
+                      {MATERIAL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
                   </td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argileQt} onChange={(e) => handleRowChange(d.id, 'argileQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argilePrix} onChange={(e) => handleRowChange(d.id, 'argilePrix', e.target.value)} className={inputClass} /></td>
-                  <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.argileTotal ? d.argileTotal.toFixed(2) : ''}</td>
+                  <td className="text-center font-mono text-cyan-400 border border-slate-800 bg-slate-900/30">{d.argileTotal ? moneyDH(d.argileTotal) : ''}</td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.argileTotal > 0 && (
                       d.argileImg ? (
                         <div className="relative group"><img src={d.argileImg} className="h-8 w-full object-cover rounded border border-slate-600" /><button onClick={() => removeImage(d.id, 'argileImg')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
-                      ) : <button onClick={() => triggerImageUpload(d.id, 'argileImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button>
+                      ) : (<><button onClick={() => triggerImageUpload(d.id, 'argileImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button><button onClick={() => setReuseTarget({ rowId: d.id, field: 'argileImg' })} className={imgButtonClass}><Copy className="w-3 h-3"/>Réutiliser</button></>)
                     )}
                   </td>
 
@@ -665,20 +741,23 @@ export const EnveloppeFinanciereView = () => {
                     {d.carburant > 0 && (
                       d.carburantImg ? (
                         <div className="relative group"><img src={d.carburantImg} className="h-8 w-full object-cover rounded border border-slate-600" /><button onClick={() => removeImage(d.id, 'carburantImg')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
-                      ) : <button onClick={() => triggerImageUpload(d.id, 'carburantImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button>
+                      ) : (<><button onClick={() => triggerImageUpload(d.id, 'carburantImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button><button onClick={() => setReuseTarget({ rowId: d.id, field: 'carburantImg' })} className={imgButtonClass}><Copy className="w-3 h-3"/>Réutiliser</button></>)
                     )}
                   </td>
 
-                  <td className="p-1 border border-slate-800"><input type="number" value={d.autres} onChange={(e) => handleRowChange(d.id, 'autres', e.target.value)} className={inputClass} /></td>
+                  <td className="p-1 border border-slate-800 align-top">
+                    <input type="text" value={d.autresType || ''} onChange={(e) => handleRowChange(d.id, 'autresType', e.target.value)} placeholder="Taper ce que c'est…" className={`${inputClass} !py-1.5 !text-[11px] mb-1`} />
+                    <input type="number" value={d.autres} onChange={(e) => handleRowChange(d.id, 'autres', e.target.value)} className={inputClass} />
+                  </td>
                   <td className="border border-slate-800 p-1 align-top">
                     {d.autres > 0 && (
                       d.autresImg ? (
                         <div className="relative group"><img src={d.autresImg} className="h-8 w-full object-cover rounded border border-slate-600" /><button onClick={() => removeImage(d.id, 'autresImg')} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X className="w-3 h-3 text-white"/></button></div>
-                      ) : <button onClick={() => triggerImageUpload(d.id, 'autresImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button>
+                      ) : (<><button onClick={() => triggerImageUpload(d.id, 'autresImg')} className={imgButtonClass}><ImageIcon className="w-3 h-3"/>Preuve</button><button onClick={() => setReuseTarget({ rowId: d.id, field: 'autresImg' })} className={imgButtonClass}><Copy className="w-3 h-3"/>Réutiliser</button></>)
                     )}
                   </td>
 
-                  <td className="text-center font-bold text-emerald-400 border border-slate-800 bg-slate-900/30">{d.totalLigne ? d.totalLigne.toFixed(2) : ''}</td>
+                  <td className="text-center font-bold text-emerald-400 border border-slate-800 bg-slate-900/30">{d.totalLigne ? moneyDH(d.totalLigne) : ''}</td>
                   <td className="text-center border border-slate-800">
                     <button onClick={() => removeRow(d.id)} disabled={rows.length === 1} className="text-slate-500 hover:text-red-400 disabled:opacity-30 p-1"><Trash2 className="w-4 h-4" /></button>
                   </td>
@@ -688,6 +767,30 @@ export const EnveloppeFinanciereView = () => {
           </table>
         </div>
       </div>
+
+      {reuseTarget && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setReuseTarget(null)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-bold text-white text-sm">Réutiliser une preuve existante</h3>
+              <button onClick={() => setReuseTarget(null)} className="text-slate-400 hover:text-white p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">Une même preuve peut couvrir plusieurs consommations, quelle que soit leur date ou leur type. Choisissez une image déjà utilisée :</p>
+            {availableProofs().length === 0 ? (
+              <p className="text-center text-slate-500 py-8 text-sm">Aucune preuve existante pour le moment — ajoutez d'abord une preuve à une consommation.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {availableProofs().map((p, idx) => (
+                  <button key={idx} onClick={() => applyReusedProof(p.img)} className="text-left border border-slate-700 hover:border-cyan-500 rounded-xl overflow-hidden transition group">
+                    <img src={p.img} className="h-24 w-full object-cover" />
+                    <span className="block text-[11px] text-slate-300 px-2 py-1.5 group-hover:text-cyan-300">{p.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="bg-slate-900/50 border border-slate-700/60 rounded-2xl p-4 max-w-sm mb-10">
         <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Récapitulatif</h3>
@@ -755,9 +858,9 @@ export const EnveloppeFinanciereView = () => {
                   return (
                     <tr key={r.id} className="border-b border-slate-800 hover:bg-white/5">
                       <td className="py-2 px-2">{r.header.beneficiaire || 'Sans nom'}</td>
-                      <td className="text-center py-2 px-2 font-mono text-slate-300">{alloue.toFixed(2)}</td>
-                      <td className="text-center py-2 px-2 font-mono text-cyan-400">{totDepense.toFixed(2)}</td>
-                      <td className={`text-center py-2 px-2 font-mono font-bold ${solde < 0 ? 'text-red-400' : 'text-emerald-400'}`}>{solde.toFixed(2)}</td>
+                      <td className="text-center py-2 px-2 font-mono text-slate-300">{moneyDH(alloue)}</td>
+                      <td className="text-center py-2 px-2 font-mono text-cyan-400">{moneyDH(totDepense)}</td>
+                      <td className={`text-center py-2 px-2 font-mono font-bold ${solde < 0 ? 'text-red-400' : 'text-emerald-400'}`}>{moneyDH(solde)}</td>
                       <td className="text-center py-2 px-2">
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => downloadPDF(r.header, r.rows)} className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-lg p-1.5 transition" title="Télécharger PDF">

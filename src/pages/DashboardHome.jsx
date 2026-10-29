@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Calendar as CalendarIcon, PieChart as PieChartIcon, Activity, BarChart3, FileText, TrendingUp, Clock } from 'lucide-react';
-import { motion as Motion, animate } from 'motion/react';
+import { useMemo, useState } from 'react';
+import { Calendar as CalendarIcon, PieChart as PieChartIcon, Activity, BarChart3, FileText, TrendingUp, Clock, Search, ArrowUpDown } from 'lucide-react';
+import { motion as Motion } from 'motion/react';
 import { getChartPalette, getAccent } from '../lib/accent';
 
 // Taste Skill v2, app sheet framed-sheet: the dashboard is an app
@@ -38,23 +38,43 @@ const FALLBACK_KPI_ICONS = {
   'Dernière Entrée': Clock
 };
 
-// Rolling Number in the PanelUI Web style: a numeric value counts
-// up once on mount (or when it changes) via motion, with no loop.
-// Non-numeric values (e.g. the "Dernière Entrée" date string) are
-// rendered exactly as passed in, never forced into a number.
-const RollingNumber = ({ value }) => {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    if (typeof value !== 'number') return undefined;
-    const controls = animate(0, value, {
-      duration: 0.9,
-      ease: 'easeOut',
-      onUpdate: (v) => setDisplay(Math.round(v))
-    });
-    return () => controls.stop();
-  }, [value]);
+// Transitions Batch 2 (copy only): spinning counter, in the
+// transitions.dev "spinning counter" style — rebuilt locally.
+// Each digit of a numeric KPI spins like a reel (a 0–9 strip that
+// translates to the target digit, staggered per digit) instead of
+// the previous plain count-up. Non-numeric values (e.g. the
+// "Dernière Entrée" date string) are rendered exactly as passed
+// in, never forced into a number. Same values, same labels.
+const SpinningDigit = ({ digit, index }) => (
+  <span
+    className="inline-block overflow-hidden align-bottom"
+    style={{ height: '1em', lineHeight: 1 }}
+    aria-hidden="true"
+  >
+    <span
+      className="block"
+      style={{
+        transform: `translateY(calc(-${digit} * 1em))`,
+        transition: `transform 0.55s var(--ease-out) ${index * 0.05}s`,
+        lineHeight: 1
+      }}
+    >
+      {['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+        <span key={d} className="block" style={{ height: '1em', lineHeight: 1 }}>{d}</span>
+      ))}
+    </span>
+  </span>
+);
+const SpinningNumber = ({ value }) => {
   if (typeof value !== 'number') return <span>{value}</span>;
-  return <span>{display}</span>;
+  const digits = String(value).split('');
+  return (
+    <span role="img" aria-label={String(value)}>
+      {digits.map((d, i) => (
+        <SpinningDigit key={i} digit={Number(d)} index={i} />
+      ))}
+    </span>
+  );
 };
 
 export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', accent = 'navy' }) => {
@@ -94,6 +114,49 @@ export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', acc
   const donutCircumference = 2 * Math.PI * donutRadius;
   const donutGap = 4;
   let donutCursor = 0;
+  // VibePrompt Batch 2 (copy only): data table with toolbar, in
+  // the VibePrompt "data table with toolbar" style — search input,
+  // sortable columns, row count and an empty state. No VibePrompt
+  // code is copied; the pattern is rebuilt locally, and the rows
+  // below are exactly the per-nature counts and month-over-month
+  // diffs the table already computed (moved up here so the toolbar
+  // can filter and sort them). No data or label is changed.
+  const [natureSearch, setNatureSearch] = useState('');
+  const [natureSort, setNatureSort] = useState('count');
+  const natureRows = useMemo(() => {
+    const thisMonthNatures = dataList
+      .filter(item => {
+        const d = new Date(item.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
+      .reduce((acc, curr) => {
+        acc[curr.nature] = (acc[curr.nature] || 0) + 1;
+        return acc;
+      }, {});
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthNatures = dataList
+      .filter(item => {
+        const d = new Date(item.date);
+        return d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
+      })
+      .reduce((acc, curr) => {
+        acc[curr.nature] = (acc[curr.nature] || 0) + 1;
+        return acc;
+      }, {});
+    const rows = Object.entries(thisMonthNatures).map(([name, count]) => ({
+      name,
+      count,
+      diff: count - (lastMonthNatures[name] || 0)
+    }));
+    const query = natureSearch.trim().toLowerCase();
+    const filtered = query ? rows.filter(r => r.name.toLowerCase().includes(query)) : rows;
+    const sorted = [...filtered];
+    if (natureSort === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    else if (natureSort === 'diff') sorted.sort((a, b) => b.diff - a.diff);
+    else sorted.sort((a, b) => b.count - a.count);
+    return sorted;
+  }, [dataList, natureSearch, natureSort]);
+
   const donutSegments = (chartData || []).map((entry, index) => {
     const fraction = donutTotal > 0 ? (entry.value || 0) / donutTotal : 0;
     const dash = Math.max(0, fraction * donutCircumference - donutGap);
@@ -124,17 +187,23 @@ export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', acc
           per-nature table, not to these totals), so no trend is
           invented. The breakdown rows are the existing captions. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {stats.map((stat) => {
+        {stats.map((stat, statIndex) => {
           const Icon = stat.icon || FALLBACK_KPI_ICONS[stat.label];
           const isNumeric = typeof stat.value === 'number';
           return (
-            <div key={stat.label} className="bg-white rounded-xl border border-line p-5">
+            <Motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: statIndex * 0.05, ease: 'easeOut' }}
+              className="bg-white rounded-xl border border-line p-5"
+            >
               <div className="flex items-center gap-2">
                 {Icon ? <Icon className="w-4 h-4 text-accent" /> : null}
                 <span className="text-sm text-slate-500">{stat.label}</span>
               </div>
               <span className={`mt-2 block font-semibold text-slate-900 tabular-nums ${isNumeric ? 'text-3xl' : 'text-2xl'}`}>
-                <RollingNumber value={stat.value} />
+                <SpinningNumber value={stat.value} />
               </span>
               {stat.breakdown && (
                 <div className="flex items-center gap-3 mt-2 text-xs text-slate-500 tabular-nums">
@@ -143,7 +212,7 @@ export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', acc
                   <span>F. SP: {stat.breakdown['F. SP'] || 0}</span>
                 </div>
               )}
-            </div>
+            </Motion.div>
           );
         })}
       </div>
@@ -198,7 +267,7 @@ export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', acc
                       fill={NAVY_SHADES[shadeIndex]}
                       initial={{ scaleY: 0 }}
                       animate={{ scaleY: 1 }}
-                      transition={{ type: 'spring', stiffness: 120, damping: 20, delay: i * 0.01 }}
+                      transition={{ type: 'spring', stiffness: 120, damping: 20, delay: i * 0.005 }}
                       style={{ transformBox: 'fill-box', transformOrigin: 'bottom' }}
                     >
                       <title>{`Jour ${entry.day} : ${entry.count} travaux`}</title>
@@ -269,7 +338,11 @@ export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', acc
                 </ul>
               </div>
             ) : (
-              <p className="text-slate-500 text-sm italic">Aucune donnée à afficher.</p>
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                <PieChartIcon className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
+                <p className="text-sm font-medium text-slate-700">Aucune donnée disponible</p>
+                <p className="text-xs text-slate-500">Aucune donnée à afficher pour le moment.</p>
+              </div>
             )}
           </div>
         </div>
@@ -316,58 +389,67 @@ export const DashboardHome = ({ stats, dataList, chartData, theme = 'light', acc
 
         {/* Nature Summary Table */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-line p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <BarChart3 className="w-4 h-4 text-accent" />
-            <h2 className="text-sm font-semibold text-slate-900">Résumé des travaux par nature</h2>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-semibold text-slate-900">Résumé des travaux par nature</h2>
+            </div>
+            <span className="text-xs text-slate-500 tabular-nums">{natureRows.length} nature{natureRows.length > 1 ? 's' : ''}</span>
+            <div className="relative ml-auto w-full sm:w-56">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={natureSearch}
+                onChange={(e) => setNatureSearch(e.target.value)}
+                placeholder="Rechercher une nature…"
+                aria-label="Rechercher une nature"
+                className="w-full rounded-lg border border-line bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left">
               <thead>
                 <tr className="border-b border-line">
-                  <th className="pb-4 text-xs font-medium text-slate-500">Nature du travail</th>
-                  <th className="pb-4 text-xs font-medium text-slate-500 text-right">Nombre</th>
-                  <th className="pb-4 text-xs font-medium text-slate-500 text-right">Évolution vs mois précédent</th>
+                  {[
+                    ['name', 'Nature du travail', 'text-left'],
+                    ['count', 'Nombre', 'text-right'],
+                    ['diff', 'Évolution vs mois précédent', 'text-right'],
+                  ].map(([key, label, align]) => (
+                    <th key={key} className={`pb-4 text-xs font-medium text-slate-500 ${align}`}>
+                      <button
+                        type="button"
+                        onClick={() => setNatureSort(key)}
+                        aria-label={`Trier par ${label}`}
+                        className={`inline-flex items-center gap-1 hover:text-slate-900 ${natureSort === key ? 'text-slate-900 font-semibold' : ''}`}
+                      >
+                        {label}
+                        <ArrowUpDown className="w-3.5 h-3.5" />
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {(() => {
-                  const now = new Date();
-                  const thisMonthNatures = dataList
-                    .filter(item => {
-                      const d = new Date(item.date);
-                      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                    })
-                    .reduce((acc, curr) => {
-                      acc[curr.nature] = (acc[curr.nature] || 0) + 1;
-                      return acc;
-                    }, {});
-
-                  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                  const lastMonthNatures = dataList
-                    .filter(item => {
-                      const d = new Date(item.date);
-                      return d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
-                    })
-                    .reduce((acc, curr) => {
-                      acc[curr.nature] = (acc[curr.nature] || 0) + 1;
-                    }, {});
-
-                  return Object.entries(thisMonthNatures).map(([name, count]) => {
-                    const prevCount = lastMonthNatures[name] || 0;
-                    const diff = count - prevCount;
-                    return (
-                      <tr key={name} className="group hover:bg-slate-50 transition-colors">
-                        <td className="py-4 text-sm font-medium text-slate-700">{name}</td>
-                        <td className="py-4 text-sm font-semibold text-slate-900 text-right tabular-nums">{count}</td>
-                        <td className="py-4 text-right">
-                          <span className="text-xs font-medium text-slate-500 tabular-nums">
-                            {diff >= 0 ? '+' : ''}{diff}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  });
-                })()}
+                {natureRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-sm text-slate-500 italic">
+                      {natureSearch.trim()
+                        ? `Aucun r\u00e9sultat pour \u00ab ${natureSearch.trim()} \u00bb.`
+                        : 'Aucun travail enregistr\u00e9 ce mois-ci.'}
+                    </td>
+                  </tr>
+                ) : natureRows.map(({ name, count, diff }) => (
+                  <tr key={name} className="group hover:bg-slate-50 transition-colors">
+                    <td className="py-4 text-sm font-medium text-slate-700">{name}</td>
+                    <td className="py-4 text-sm font-semibold text-slate-900 text-right tabular-nums">{count}</td>
+                    <td className="py-4 text-right">
+                      <span className="text-xs font-medium text-slate-500 tabular-nums">
+                        {diff >= 0 ? '+' : ''}{diff}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

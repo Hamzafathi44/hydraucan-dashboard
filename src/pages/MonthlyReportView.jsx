@@ -28,9 +28,9 @@ export const MonthlyReportView = ({
   return (
     <Motion.div
       key="rapport"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
     >
       {/* Top Header */}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
@@ -130,7 +130,7 @@ export const MonthlyReportView = ({
               {isSubmitting ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
               {editingId ? "MAJ" : "Ajouter"}
             </button>
-            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="px-4 sm:flex-none justify-center border border-line bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-xl transition-all h-[42px] flex items-center gap-2">
+            <button type="button" onClick={() => setShowFicheDetails(!showFicheDetails)} className="px-4 sm:flex-none justify-center border border-line bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-xl transition-[color,background-color,border-color,transform,opacity] h-[42px] flex items-center gap-2">
               <FileText className="w-4 h-4" /> {showFicheDetails ? "Masquer la Fiche EAU" : "Ajouter les détails de la Fiche EAU"}
             </button>
           </div>
@@ -264,14 +264,14 @@ export const MonthlyReportView = ({
                           handleEdit(item);
                           setShowFicheDetails(true);
                         }}
-                        className="p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        className="p-2 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-[color,background-color,border-color,transform,opacity] opacity-0 group-hover:opacity-100"
                         title="Modifier (Avec Fiche)"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => handleDelete(item.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-[color,background-color,border-color,transform,opacity] opacity-0 group-hover:opacity-100"
                         title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -308,7 +308,7 @@ export const MonthlyReportView = ({
               <button 
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-2 border border-line rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="p-2 border border-line rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-[color,background-color,border-color,transform,opacity]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -325,7 +325,7 @@ export const MonthlyReportView = ({
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${currentPage === page ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'hover:bg-white/10 text-slate-400'}`}
+                      className={`w-8 h-8 text-xs font-bold rounded-lg transition-[color,background-color,border-color,transform,opacity] ${currentPage === page ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'hover:bg-white/10 text-slate-400'}`}
                     >
                       {page}
                     </button>
@@ -335,7 +335,7 @@ export const MonthlyReportView = ({
               <button 
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-2 border border-line rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="p-2 border border-line rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-[color,background-color,border-color,transform,opacity]"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

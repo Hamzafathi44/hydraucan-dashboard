@@ -165,7 +165,7 @@ export const SRMExcelImporter = () => {
 
       <label 
         htmlFor="srm-excel-input"
-        className={`px-6 py-3.5 rounded-xl font-bold text-white transition-all duration-200 inline-block cursor-pointer shadow-lg ${
+        className={`px-6 py-3.5 rounded-xl font-bold text-white transition-[color,background-color,border-color,transform,opacity] duration-200 inline-block cursor-pointer shadow-lg ${
           loading ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95'
         }`}
       >

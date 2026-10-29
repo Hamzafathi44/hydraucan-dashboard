@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { LoginForm } from './components/LoginForm';
 import { Toaster } from 'sonner';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion as Motion, useReducedMotion } from 'motion/react';
 
 // Hooks & Layouts
 import { useDashboardData } from './hooks/useDashboardData';
@@ -40,59 +40,114 @@ const AccentPicker = ({ accent, onAccentChange }) => (
   </span>
 );
 
-const EXEMPT_VIEWS = ['refection', 'enveloppe'];
+// Theme exemption, updated 2026-10-28: Réfection's exemption was
+// removed at Michael's request, so Réfection now follows the
+// chosen accent and light/dark mode like every other view.
+// Enveloppe financière stays exempt (light + navy, "Thème
+// d'origine" badge) — only its exemption remains.
+const EXEMPT_VIEWS = ['enveloppe'];
+
+// Transitions Batch 1 (copy only): page side-by-side, in the
+// transitions.dev "page side-by-side" style — rebuilt locally with
+// motion, which the app already uses, not copied from the site.
+// Previously the views switched with no transition (AnimatePresence
+// was present but its children had no keys, so exits never ran).
+// Each view is now a keyed motion wrapper: entering from the right
+// when moving forward through the view order and from the left when
+// moving back, with a short blur fade, 0.35s. No view, data or route
+// is changed; Réfection and Enveloppe views themselves are untouched.
+const VIEW_ORDER = ['home', 'pointage', 'rapport', 'refection', 'statistics', 'fichier', 'srm-excel', 'enveloppe', 'settings'];
+const PageTransition = ({ viewKey, direction, children }) => {
+  const shouldReduceMotion = useReducedMotion();
+  if (shouldReduceMotion) {
+    return <div className="min-w-0">{children}</div>;
+  }
+  return (
+    <Motion.div
+      key={viewKey}
+      initial={{ opacity: 0, x: direction * 28, filter: 'blur(4px)' }}
+      animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, x: direction * -28, filter: 'blur(4px)' }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+      className="min-w-0"
+    >
+      {children}
+    </Motion.div>
+  );
+};
 
 const AuthenticatedApp = ({ user, activeView, setActiveView, theme, onToggleTheme, accent, onAccentChange, isThemeExempt, effectiveTheme, effectiveAccent }) => {
   const dashboardData = useDashboardData(user);
+  const prevViewRef = useRef(activeView);
+  const direction = VIEW_ORDER.indexOf(activeView) >= VIEW_ORDER.indexOf(prevViewRef.current) ? 1 : -1;
+  useEffect(() => { prevViewRef.current = activeView; }, [activeView]);
 
   return (
     <DashboardLayout activeView={activeView} setActiveView={setActiveView} theme={effectiveTheme} onToggleTheme={isThemeExempt ? null : onToggleTheme} accent={effectiveAccent} onAccentChange={isThemeExempt ? null : onAccentChange} isThemeExempt={isThemeExempt}>
       <AnimatePresence mode="wait">
         {activeView === 'home' && (
-          <DashboardHome
-            stats={dashboardData.stats}
-            dataList={dashboardData.dataList}
-            chartData={dashboardData.chartData}
-            theme={theme}
-            accent={accent}
-          />
+          <PageTransition key="home" viewKey="home" direction={direction}>
+            <DashboardHome
+              stats={dashboardData.stats}
+              dataList={dashboardData.dataList}
+              chartData={dashboardData.chartData}
+              theme={theme}
+              accent={accent}
+            />
+          </PageTransition>
         )}
         {activeView === 'pointage' && (
-          <PointageView user={user} />
+          <PageTransition key="pointage" viewKey="pointage" direction={direction}>
+            <PointageView user={user} />
+          </PageTransition>
         )}
         {activeView === 'rapport' && (
-          <MonthlyReportView 
-            {...dashboardData} 
-          />
+          <PageTransition key="rapport" viewKey="rapport" direction={direction}>
+            <MonthlyReportView
+              {...dashboardData}
+            />
+          </PageTransition>
         )}
         {activeView === 'refection' && (
-          <RefectionView />
+          <PageTransition key="refection" viewKey="refection" direction={direction}>
+            <RefectionView user={user} />
+          </PageTransition>
         )}
         {activeView === 'statistics' && (
-          <StatisticsView dataList={dashboardData.dataList} theme={theme} accent={accent} />
+          <PageTransition key="statistics" viewKey="statistics" direction={direction}>
+            <StatisticsView dataList={dashboardData.dataList} theme={theme} accent={accent} />
+          </PageTransition>
         )}
         {activeView === 'fichier' && (
-          <FichierExploitationEauView user={user} {...dashboardData} />
+          <PageTransition key="fichier" viewKey="fichier" direction={direction}>
+            <FichierExploitationEauView user={user} {...dashboardData} />
+          </PageTransition>
         )}
-        
+
         {activeView === 'srm-excel' && (
-          <div className="p-4 md:p-6 max-w-4xl mx-auto">
-            <SRMExcelImporter />
-          </div>
+          <PageTransition key="srm-excel" viewKey="srm-excel" direction={direction}>
+            <div className="p-4 md:p-6 max-w-4xl mx-auto">
+              <SRMExcelImporter />
+            </div>
+          </PageTransition>
         )}
 
         {/* Enveloppe block: outside the srm-excel block */}
         {activeView === 'enveloppe' && (
-          <EnveloppeFinanciereView />
+          <PageTransition key="enveloppe" viewKey="enveloppe" direction={direction}>
+            <EnveloppeFinanciereView user={user} />
+          </PageTransition>
         )}
 
         {activeView === 'settings' && (
-          <SettingsView 
-            typeOptions={dashboardData.typeOptions}
-            natureOptions={dashboardData.natureOptions}
-            handleAddOption={dashboardData.handleAddOption}
-            handleRemoveOption={dashboardData.handleRemoveOption}
-          />
+          <PageTransition key="settings" viewKey="settings" direction={direction}>
+            <SettingsView
+              typeOptions={dashboardData.typeOptions}
+              natureOptions={dashboardData.natureOptions}
+              handleAddOption={dashboardData.handleAddOption}
+              handleRemoveOption={dashboardData.handleRemoveOption}
+            />
+          </PageTransition>
         )}
       </AnimatePresence>
     </DashboardLayout>
@@ -155,9 +210,36 @@ function App() {
   }, []);
 
   if (authLoading) {
+    // Transitions Batch 3 (copy only): skeleton loader and reveal,
+    // in the transitions.dev "skeleton loader and reveal" style —
+    // rebuilt locally. While auth resolves, a skeleton of the real
+    // shell (sidebar, top bar, KPI row, chart cards) pulses; when
+    // the user is known, the authenticated app below fades in
+    // (see the Motion wrapper on its return). No data is shown
+    // here, only placeholders.
     return (
-      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-[#0F172A]' : 'bg-[#EEF2F7]'}`}>
-        <span className="w-8 h-8 border-4 border-[#1A2B56]/30 border-t-[#1A2B56] rounded-full animate-spin" />
+      <div className={`min-h-screen flex ${theme === 'dark' ? 'bg-[#0F172A]' : 'bg-[#EEF2F7]'}`} aria-label="Chargement">
+        <div className="hidden lg:block w-[240px] shrink-0 p-6 space-y-4">
+          <div className="h-12 rounded-lg bg-slate-300/60 animate-pulse" />
+          <div className="h-16 rounded-lg bg-slate-300/40 animate-pulse" />
+          <div className="h-10 rounded-lg bg-slate-300/40 animate-pulse" />
+          <div className="h-10 rounded-lg bg-slate-300/40 animate-pulse" />
+          <div className="h-10 rounded-lg bg-slate-300/40 animate-pulse" />
+        </div>
+        <div className="flex-1 min-w-0 p-2">
+          <div className="h-12 rounded-lg bg-slate-300/40 animate-pulse mb-2" />
+          <div className="bg-white rounded-2xl border border-line p-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="h-24 rounded-xl bg-slate-200/70 animate-pulse" />
+              <div className="h-24 rounded-xl bg-slate-200/70 animate-pulse" />
+              <div className="h-24 rounded-xl bg-slate-200/70 animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="h-64 rounded-xl bg-slate-200/70 animate-pulse" />
+              <div className="h-64 rounded-xl bg-slate-200/70 animate-pulse" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -191,10 +273,10 @@ function App() {
   }
 
   return (
-    <>
+    <Motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: 'easeOut' }}>
       <Toaster position="top-right" richColors />
       <AuthenticatedApp user={user} activeView={activeView} setActiveView={setActiveView} theme={theme} onToggleTheme={toggleTheme} accent={accent} onAccentChange={setAccent} isThemeExempt={isThemeExempt} effectiveTheme={effectiveTheme} effectiveAccent={effectiveAccent} />
-    </>
+    </Motion.div>
   );
 }
 

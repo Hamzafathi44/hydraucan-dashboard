@@ -1,8 +1,20 @@
 rules_version = '2';
+
+// Security fix (copy, 2026-10-28): proofs are now stored per user.
+// Previously any authenticated user could read and delete anything under
+// enveloppe_preuves. New uploads go to enveloppe_preuves/<uid>/... (see
+// EnveloppeFinanciereView.jsx), and only that user may read/write them.
+//
+// IMPORTANT: this file is NOT deployed by Vercel. Paste it into Firebase
+// Console > Storage > Rules and publish it there for it to take effect.
+// Proofs uploaded before this fix live in the flat shared folder and are
+// not covered by the per-user rule below — move or re-upload them, or add
+// an explicit legacy rule, if they still need to be readable.
+
 service firebase.storage {
   match /b/{bucket}/o {
-    match /enveloppe_preuves/{allPaths=**} {
-      allow read, write: if request.auth != null;
+    match /enveloppe_preuves/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

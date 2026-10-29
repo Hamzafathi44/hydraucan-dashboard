@@ -138,13 +138,13 @@ export const SrmReportModal = ({ isOpen, onClose, onSave, initialData }) => {
         <div className="px-8 mt-6">
           <div className="flex items-center justify-between relative max-w-xs mx-auto">
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1.5 rounded-full -z-10 overflow-hidden bg-slate-100 border border-line">
-              <div className="h-full bg-accent transition-all duration-500" style={{ width: `${((step - 1) / 2) * 100}%` }}></div>
+              <div className="h-full bg-accent transition-[color,background-color,border-color,transform,opacity] duration-500" style={{ width: `${((step - 1) / 2) * 100}%` }}></div>
             </div>
             {[1, 2, 3].map(item => (
               <div 
                 key={item} 
                 onClick={() => setStep(item)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold cursor-pointer transition-all shadow-sm border-[3px] ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold cursor-pointer transition-[color,background-color,border-color,transform,opacity] shadow-sm border-[3px] ${
                   step >= item 
                     ? 'bg-accent border-white text-ink shadow-md scale-110' 
                     : 'bg-white border-slate-100 text-slate-300'
