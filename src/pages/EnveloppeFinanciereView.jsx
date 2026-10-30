@@ -26,6 +26,11 @@ const PROOF_FIELDS = ['cimentImg', 'argileImg', 'carburantImg', 'autresImg'];
 const MATERIAL_TYPES = ['Argile', 'Faïence', 'Revsol', 'Pavé', 'Béton', 'Goudron', 'Lamozik', 'Carrelage', 'Autre'];
 const materialLabelOf = (row) => row.argileType === 'Autre' ? (row.argileCustomType || 'Autre') : (row.argileType || 'Argile');
 
+// A material consumption exists when a quantity or a price was entered
+// for it. Rows without one must not show the default "Argile" label —
+// they show dashes instead (copy, 2026-10-30).
+const hasMaterialUse = (row) => (parseFloat(row.argileQt) || 0) > 0 || (parseFloat(row.argilePrix) || 0) > 0;
+
 // Display format for money (copy, 2026-10-29): 1000 -> "1000.00 DH".
 // Used for every displayed price/amount; editable inputs stay plain
 // numbers while typing, since a number field cannot show the " DH".
@@ -455,7 +460,7 @@ export const EnveloppeFinanciereView = ({ user }) => {
       index + 1,
       d.date || '',
       d.cimentQt, moneyDH(d.cimentPrix), d.cimentTotal ? moneyDH(d.cimentTotal) : '',
-      materialLabelOf(d),
+      hasMaterialUse(d) ? materialLabelOf(d) : '———',
       d.argileQt, moneyDH(d.argilePrix), d.argileTotal ? moneyDH(d.argileTotal) : '',
       moneyDH(d.carburant),
       d.autresType ? `${d.autresType} : ${moneyDH(d.autres)}` : moneyDH(d.autres),
@@ -721,9 +726,13 @@ export const EnveloppeFinanciereView = ({ user }) => {
                   </td>
 
                   <td className="p-1 border border-slate-800 align-top">
-                    <select value={d.argileType || 'Argile'} onChange={(e) => handleRowChange(d.id, 'argileType', e.target.value)} className={`${inputClass} !py-1.5 !text-[11px] min-w-[95px]`}>
-                      {MATERIAL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    {hasMaterialUse(d) ? (
+                      <select value={d.argileType || 'Argile'} onChange={(e) => handleRowChange(d.id, 'argileType', e.target.value)} className={`${inputClass} !py-1.5 !text-[11px] min-w-[95px]`}>
+                        {MATERIAL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    ) : (
+                      <span className="text-slate-500 text-[11px]">———</span>
+                    )}
                   </td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argileQt} onChange={(e) => handleRowChange(d.id, 'argileQt', e.target.value)} className={inputClass} /></td>
                   <td className="p-1 border border-slate-800"><input type="number" value={d.argilePrix} onChange={(e) => handleRowChange(d.id, 'argilePrix', e.target.value)} className={inputClass} /></td>
